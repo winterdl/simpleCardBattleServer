@@ -1,0 +1,29 @@
+[app]
+name = "cardBattle"
+version = "0.0.1"
+host = "localhost"
+port = 8000
+port_rest = 8080
+dirhost = "files"
+
+[game]
+cash = 180
+card = 5
+
+[shop]
+total = 1
+min = 5
+max = 50
+time = 30
+max_item = 20
+
+[room]
+expired_time = 30
+default_max_player = 2
+default_max_player_deck = 8
+default_max_deploment = 4
+default_each_player_health = 100
+default_cool_down_time = 20
+default_max_card_reward = 4
+default_cash_reward = 120
+default_level_reward = 1

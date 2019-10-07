@@ -1,0 +1,127 @@
+syntax = "proto3";
+
+package cardBattle;
+
+service cardBattleService {
+    rpc cardBattleLogin(player) returns (player) {}
+    rpc cardBattleRoomStream(stream roomStream) returns (stream roomStream) {}
+    rpc cardBattleLobbyStream(stream lobbyStream) returns (stream lobbyStream) {}
+}
+
+message player {
+    string id = 1;
+    string name = 2;
+    string avatar = 3;
+    int32 level = 4;
+    int32 cash = 5;
+}
+
+message allPlayer {
+    repeated player players = 1;
+}
+
+message card {
+    string id = 1;
+    string image = 2;
+    int32 price = 3;
+    int32 level = 4;
+    int32 atk = 5;
+    int32 def = 6;
+    int32 color = 7;
+    string name = 8;
+}
+
+message allCard {
+    repeated card cards = 1;
+}
+
+message playerAndCard {
+    player client = 1;
+    card cardData = 2;
+}
+
+
+message lobbyStream {
+   oneof event {
+
+        // for broadcast
+        player playerJoin = 1;
+        player playerLeft = 2;
+        roomData createRoom = 3;
+        int32 shopRefreshTime = 4;
+        bool shopRefresh = 5;
+
+        // for client him self
+        roomData getOneRoom = 6;
+        allRoom getAllRooms = 7;
+        allPlayer getAllPlayers = 8;
+        player getOneplayer = 9;
+        player playerSuccessJoin = 10;
+        player playerSuccessLeft = 11;
+        playerWithCards onePlayerWithCards = 12;
+        allCard allCardInShopping = 13;
+        playerAndCard onBuyCard = 14;
+        bool onCardBought = 15;
+        playerAndCard onSellCard = 16;
+        bool onCardSold = 17;
+        playerAndCard addCardToDeck = 18;
+        playerAndCard removeCardFromDeck = 19;
+        player onjoinWaitingRoom = 20;
+        player onLeftWaitingRoom = 21;
+        roomData onBattleFound = 22;
+
+       // broadcast for certain user
+
+    }
+}
+
+
+
+message playerWithCards {
+    player owner = 1;
+    repeated card deck = 2;
+    repeated card deployed = 3;
+    repeated card reserve = 4;
+    int32 hp = 5;
+    int32 attackPower = 6;
+    int32 damageReceive = 7;
+}
+
+message allPlayerWithCards {
+    repeated playerWithCards players = 1;
+}
+
+message roomData {
+    string id = 1;
+    string roomName = 2;
+    repeated playerWithCards players = 4;
+    int32 maxPlayer = 5;
+    int32 maxPlayerDeck = 6;
+    int32 maxDeploment = 7;
+    int32 eachPlayerHealth = 8;
+    int32 coolDownTime = 9;
+    repeated card cardReward = 10;
+    int32 cashReward = 11;
+    int32 levelReward = 12;
+}
+
+message allRoom {
+    repeated roomData rooms = 1;
+}
+
+message roomStream {
+    oneof event {
+        // for broadcast
+        playerWithCards playerJoin = 1;
+        playerWithCards playerLeft = 2;
+
+        // for client him self
+        playerWithCards getOneplayer = 3;
+        roomData getOneRoom = 4;
+
+        // broadcast for certain user
+    }
+
+     // for flagging in server
+    int32 roomFlag = 5;
+}
