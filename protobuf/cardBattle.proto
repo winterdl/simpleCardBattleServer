@@ -69,8 +69,7 @@ message lobbyStream {
         player onjoinWaitingRoom = 20;
         player onLeftWaitingRoom = 21;
         roomData onBattleFound = 22;
-
-       // broadcast for certain user
+        bool onBattleNotFound = 23;
 
     }
 }
@@ -109,19 +108,39 @@ message allRoom {
     repeated roomData rooms = 1;
 }
 
+message playerBattleResult {
+    player owner = 1;
+    int32 damageReceive = 2;
+}
+
+message allPlayerBattleResult {
+    repeated playerBattleResult results = 1;
+}
+
 message roomStream {
     oneof event {
         // for broadcast
         playerWithCards playerJoin = 1;
         playerWithCards playerLeft = 2;
+        roomData onRoomUpdate = 3;
+        int32 countDown = 4;
+        allPlayerBattleResult result = 5;
+        player onWinner = 6;
 
         // for client him self
-        playerWithCards getOneplayer = 3;
-        roomData getOneRoom = 4;
-
-        // broadcast for certain user
+        playerAndCard deployCard = 7;
+        playerAndCard pickupCard = 8;
+        roomData getOneRoom = 9;
     }
 
      // for flagging in server
-    int32 roomFlag = 5;
+     // 0 = room is good to go
+     // 1 = room must be stoped
+    int32 roomFlag = 10;
+
+    // for flagging in server and client
+    // 0 = all player is not ready 
+    // 1 = all player is ready
+    // 2 = only some player ready
+    int32 playersFlag = 11;
 }

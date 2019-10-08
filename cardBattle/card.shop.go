@@ -3,6 +3,7 @@ package cardBattle
 import (
 	"encoding/json"
 	fmt "fmt"
+	"log"
 	"math/rand"
 	"time"
 
@@ -32,7 +33,10 @@ func (s *CardBattleServer) RunCardShop() {
 
 			select {
 			case <-serv.Ctx.Done():
-				break
+
+				log.Println("shop is stoped")
+				return
+
 			default:
 				switch timeLeft {
 				case 0:

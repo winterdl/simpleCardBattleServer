@@ -48,33 +48,36 @@ func (r *CardBattleServer) RunRoomMaker() {
 		for {
 			select {
 			case <-s.Ctx.Done():
-				break
+
+				log.Println("room maker is stoped")
+				return
+
 			default:
 
 				// choose player from waiting room
 				// choose until player needed reach max
 				players := []*PlayerWithCards{}
 
-				for len(players) < int(s.RoomConfig.DefaultMaxPlayer) {
+				s.streamsMtx.RLock()
+				for _, p := range s.PlayersInWaitingRoom {
 
-					s.streamsMtx.RLock()
-					for _, p := range s.PlayersInWaitingRoom {
-
-						player, errCopy := p.makeCopy()
-						if errCopy != nil {
-							log.Println(errCopy)
-						}
-
-						if !checkIfAlreadyInQueue(player, players) && checkIfLevelSame(player, players) {
-							players = append(players, player)
-
-						}
+					player, errCopy := p.makeCopy()
+					if errCopy != nil {
+						log.Println(errCopy)
 					}
-					s.streamsMtx.RUnlock()
 
+					if !checkIfAlreadyInQueue(player, players) && checkIfLevelSame(player, players) {
+						players = append(players, player)
+
+					}
+
+					if len(players) == int(s.RoomConfig.DefaultMaxPlayer) {
+						break
+					}
 				}
+				s.streamsMtx.RUnlock()
 
-				if len(players) == int(r.RoomConfig.DefaultMaxPlayer) {
+				if len(players) == int(s.RoomConfig.DefaultMaxPlayer) {
 
 					for _, p := range players {
 						if _, isExist := s.PlayersInWaitingRoom[p.Owner.Id]; isExist {
@@ -96,6 +99,7 @@ func (r *CardBattleServer) RunRoomMaker() {
 						time.Second*time.Duration(int(s.RoomConfig.ExpiredTime)))
 
 					// add room to room list
+					s.streamsMtx.RLock()
 					s.Room[room.Id] = &Room{
 						ID:            room.Id,
 						Data:          room,
@@ -103,6 +107,7 @@ func (r *CardBattleServer) RunRoomMaker() {
 						Broadcast:     make(chan RoomStream),
 						ClientStreams: make(map[string]chan RoomStream),
 					}
+					s.streamsMtx.RUnlock()
 
 					// run room hub
 					s.newRoomHub(room.Id)
@@ -117,9 +122,31 @@ func (r *CardBattleServer) RunRoomMaker() {
 							},
 						}
 					}
+
+				} else {
+
+					// for _, p := range players {
+					// 	if _, isExist := s.PlayersInWaitingRoom[p.Owner.Id]; isExist {
+					// 		s.streamsMtx.RLock()
+					// 		delete(s.PlayersInWaitingRoom, p.Owner.Id)
+					// 		s.streamsMtx.RUnlock()
+					// 	}
+					// }
+
+					// // broadcast to player
+					// // battle is not found
+					// // because room not have enought player
+					// for _, player := range players {
+					// 	s.Lobby.ClientStreams[player.Owner.Id] <- LobbyStream{
+					// 		Event: &LobbyStream_OnBattleNotFound{
+					// 			OnBattleNotFound: true,
+					// 		},
+					// 	}
+					// }
+
 				}
 
-				time.Sleep(15 * time.Second)
+				time.Sleep(5 * time.Second)
 
 			}
 		}
@@ -131,10 +158,27 @@ func (r *CardBattleServer) RemoveEmptyRoom() {
 		for {
 			select {
 			case <-s.Ctx.Done():
-				break
+
+				// just close all room
+				s.streamsMtx.RLock()
+				for _, room := range s.Room {
+					s.Room[room.ID].Broadcast <- RoomStream{
+						RoomFlag: 1,
+					}
+				}
+
+				s.streamsMtx.RUnlock()
+				log.Println("room remover is stoped")
+				return
+
 			default:
 
+				s.streamsMtx.RLock()
 				for _, room := range s.Room {
+
+					// if room player is none
+					// and
+					// room is expired
 					if len(room.Data.Players) == 0 && time.Now().Local().After(room.RoomExpired) {
 
 						// send room flag set into 1
@@ -147,6 +191,8 @@ func (r *CardBattleServer) RemoveEmptyRoom() {
 
 					}
 				}
+				s.streamsMtx.RUnlock()
+
 				time.Sleep(1 * time.Second)
 			}
 		}

@@ -428,6 +428,10 @@ func (c *CardBattleServer) CardBattleLobbyStream(stream CardBattleService_CardBa
 
 			// left this empty
 
+		case *LobbyStream_OnBattleNotFound:
+
+			// left this empty
+
 		default:
 		}
 	}

@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -87,21 +88,41 @@ var rootCmd = &cobra.Command{
 
 		reflection.Register(s)
 
+		mux := http.NewServeMux()
+		mux.Handle("/", http.FileServer(http.Dir(viper.GetString("app.dirhost"))))
+		restSrv := &http.Server{
+			Addr:    fmt.Sprintf(":%d", viper.GetInt("app.port_rest")),
+			Handler: mux,
+		}
+
 		go func() {
 
 			log.Println(fmt.Sprintf("listen and serve in port :%d", viper.GetInt("app.port")))
 			if err := s.Serve(lis); err != nil {
-				log.Fatalf("failed to serve: %v", err)
-
+				log.Println(fmt.Sprintf("failed to serve GRPC: %v", err))
 			}
+			log.Println(fmt.Sprintf("grpc server is shutdown on port :%d", viper.GetInt("app.port")))
 
 			cancel()
+
+		}()
+
+		go func() {
+
+			<-ctx.Done()
+			time.Sleep(5 * time.Second)
+
+			if err := restSrv.Shutdown(ctx); err != nil {
+				log.Fatalf("Server Shutdown Failed:%+v", err)
+			}
+			log.Println(fmt.Sprintf("rest server is shutdown on port :%d", viper.GetInt("app.port_rest")))
+
 		}()
 
 		log.Println(fmt.Sprintf("file host listen and serve in port :%d", viper.GetInt("app.port_rest")))
-		mux := http.NewServeMux()
-		mux.Handle("/", http.FileServer(http.Dir(viper.GetString("app.dirhost"))))
-		http.ListenAndServe(fmt.Sprintf(":%d", viper.GetInt("app.port_rest")), mux)
+		if err := restSrv.ListenAndServe(); err != nil {
+			log.Println(fmt.Sprintf("failed to serve Rest: %v", err))
+		}
 
 		<-ctx.Done()
 

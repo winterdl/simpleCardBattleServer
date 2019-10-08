@@ -34,7 +34,10 @@ func (c *CardBattleServer) newRoomHub(id string) {
 			case 1:
 
 				close(s.Room[idRoom].Broadcast)
+
+				s.streamsMtx.RLock()
 				delete(s.Room, idRoom)
+				s.streamsMtx.RUnlock()
 
 				return
 
