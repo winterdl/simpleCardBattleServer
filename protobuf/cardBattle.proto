@@ -133,9 +133,9 @@ message roomStream {
         roomData getOneRoom = 9;
     }
 
-     // for flagging in server
-     // 0 = room is good to go
-     // 1 = room must be stoped
+    // for flagging in server
+    // 0 = room is good to go
+    // 1 = room must be stoped
     int32 roomFlag = 10;
 
     // for flagging in server and client
@@ -143,4 +143,9 @@ message roomStream {
     // 1 = all player is ready
     // 2 = only some player ready
     int32 playersFlag = 11;
+
+     // for flagging in server
+     // 0 = battle countdown is good to go
+     // 1 = battle countdown must stop
+    int32 battleFlag = 12;
 }

@@ -179,7 +179,7 @@ func (r *CardBattleServer) RemoveEmptyRoom() {
 					// if room player is none
 					// and
 					// room is expired
-					if len(room.Data.Players) == 0 && time.Now().Local().After(room.RoomExpired) {
+					if (len(room.Data.Players) == 0 || len(room.ClientStreams) == 0) && time.Now().Local().After(room.RoomExpired) {
 
 						// send room flag set into 1
 						// this will triger looping in hub

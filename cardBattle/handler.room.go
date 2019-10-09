@@ -3,7 +3,9 @@ package cardBattle
 import "io"
 
 func (c *CardBattleServer) CardBattleRoomStream(stream CardBattleService_CardBattleRoomStreamServer) error {
+
 	for {
+
 		msg, err := stream.Recv()
 		if err == io.EOF {
 			return nil
@@ -64,4 +66,5 @@ func (c *CardBattleServer) CardBattleRoomStream(stream CardBattleService_CardBat
 		default:
 		}
 	}
+
 }

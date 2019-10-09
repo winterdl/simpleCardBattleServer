@@ -101,7 +101,6 @@ var rootCmd = &cobra.Command{
 			if err := s.Serve(lis); err != nil {
 				log.Println(fmt.Sprintf("failed to serve GRPC: %v", err))
 			}
-			log.Println(fmt.Sprintf("grpc server is shutdown on port :%d", viper.GetInt("app.port")))
 
 			cancel()
 
@@ -111,6 +110,9 @@ var rootCmd = &cobra.Command{
 
 			<-ctx.Done()
 			time.Sleep(5 * time.Second)
+
+			s.GracefulStop()
+			log.Println(fmt.Sprintf("grpc server is shutdown on port :%d", viper.GetInt("app.port")))
 
 			if err := restSrv.Shutdown(ctx); err != nil {
 				log.Fatalf("Server Shutdown Failed:%+v", err)
@@ -124,12 +126,9 @@ var rootCmd = &cobra.Command{
 			log.Println(fmt.Sprintf("failed to serve Rest: %v", err))
 		}
 
-		<-ctx.Done()
-
 		// close any channel
 		close(lobby.Lobby.Broadcast)
 
-		s.GracefulStop()
 	},
 }
 

@@ -65,3 +65,21 @@ func (p *PlayerWithCards) makeCopy() (*PlayerWithCards, error) {
 
 	return player, nil
 }
+
+func (p *Player) getTotalPlayerAtkCards(cards []*Card) int32 {
+	var total int32 = 0
+	for _, c := range cards {
+		total += c.Atk
+	}
+
+	return total
+}
+
+func (p *Player) getTotalPlayerDefCards(cards []*Card) int32 {
+	var total int32 = 0
+	for _, c := range cards {
+		total += c.Def
+	}
+
+	return total
+}
