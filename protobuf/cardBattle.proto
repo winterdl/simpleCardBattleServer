@@ -148,4 +148,9 @@ message roomStream {
      // 0 = battle countdown is good to go
      // 1 = battle countdown must stop
     int32 battleFlag = 12;
+
+
+    // for join and leave
+    // this for identifier
+    string idRoom = 13;
 }

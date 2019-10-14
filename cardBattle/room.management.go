@@ -101,11 +101,12 @@ func (r *CardBattleServer) RunRoomMaker() {
 					// add room to room list
 					s.streamsMtx.RLock()
 					s.Room[room.Id] = &Room{
-						ID:            room.Id,
-						Data:          room,
-						RoomExpired:   timeExp,
-						Broadcast:     make(chan RoomStream),
-						ClientStreams: make(map[string]chan RoomStream),
+						ID:             room.Id,
+						Data:           room,
+						RoomExpired:    timeExp,
+						Broadcast:      make(chan RoomStream),
+						ClientStreams:  make(map[string]chan RoomStream),
+						LocalBroadcast: make(chan RoomStream),
 					}
 					s.streamsMtx.RUnlock()
 

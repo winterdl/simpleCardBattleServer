@@ -39,6 +39,7 @@ func (c *CardBattleServer) newRoomHub(id string) {
 				case 1:
 
 					close(s.Room[idRoom].Broadcast)
+					close(s.Room[idRoom].LocalBroadcast)
 
 					s.streamsMtx.RLock()
 					delete(s.Room, idRoom)
@@ -132,6 +133,9 @@ func (c *CardBattleServer) startRoomBattleCountdown(id string) {
 				switch value {
 				case 0:
 
+					winer := &Player{}
+					withFullHp := []*Player{}
+					withZeroHp := []*Player{}
 					results := []*PlayerBattleResult{}
 
 					s.Room[idRoom].streamsMtx.RLock()
@@ -139,7 +143,8 @@ func (c *CardBattleServer) startRoomBattleCountdown(id string) {
 
 					for _, p1 := range s.Room[idRoom].Data.Players {
 						pResult := &PlayerBattleResult{
-							Owner: p1.Owner,
+							Owner:         p1.Owner,
+							DamageReceive: 0,
 						}
 
 						for _, p2 := range s.Room[idRoom].Data.Players {
@@ -164,6 +169,17 @@ func (c *CardBattleServer) startRoomBattleCountdown(id string) {
 							if s.Room[idRoom].Data.Players[i].Owner.Id == d.Owner.Id {
 								s.Room[idRoom].Data.Players[i].Hp -= d.DamageReceive
 							}
+
+							// if player hp is negative
+							// force set to 0
+							if s.Room[idRoom].Data.Players[i].Hp < 0 {
+								s.Room[idRoom].Data.Players[i].Hp = 0
+								withZeroHp = append(withZeroHp, s.Room[idRoom].Data.Players[i].Owner)
+							}
+
+							if s.Room[idRoom].Data.Players[i].Hp > 0 {
+								withFullHp = append(withFullHp, s.Room[idRoom].Data.Players[i].Owner)
+							}
 						}
 					}
 
@@ -172,9 +188,38 @@ func (c *CardBattleServer) startRoomBattleCountdown(id string) {
 						s.Room[idRoom].Data.Players[i].Deployed = []*Card{}
 					}
 
+					// only need one winer
+					if len(withFullHp) == 1 {
+						for _, p := range withFullHp {
+							winer = p
+						}
+					}
+
 					// from player deck and
 					// update data in room
 					s.Room[idRoom].streamsMtx.RUnlock()
+
+					//send who is the winer is
+					// and stop the looping
+					if winer.Id != "" {
+
+						// set winner prize
+						c.Players[winer.Id].Owner.Cash += c.Room[idRoom].Data.CashReward
+
+						for _, card := range c.Room[idRoom].Data.CardReward {
+							c.Players[winer.Id].Reserve = append(c.Players[winer.Id].Reserve, card)
+						}
+
+						// broadcash who is winner is
+						c.Room[idRoom].Broadcast <- RoomStream{
+							Event: &RoomStream_OnWinner{
+								OnWinner: winer,
+							},
+						}
+
+						// stop the loop
+						return
+					}
 
 					// send signal
 					// announce the battle result
