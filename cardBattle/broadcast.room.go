@@ -205,7 +205,7 @@ func (c *CardBattleServer) startRoomBattleCountdown(id string) {
 
 						// set winner prize
 						c.Players[winer.Id].Owner.Cash += c.Room[idRoom].Data.CashReward
-
+						c.Players[winer.Id].Owner.Level += c.Room[idRoom].Data.LevelReward
 						for _, card := range c.Room[idRoom].Data.CardReward {
 							c.Players[winer.Id].Reserve = append(c.Players[winer.Id].Reserve, card)
 						}
