@@ -66,6 +66,36 @@ func (p *PlayerWithCards) makeCopy() (*PlayerWithCards, error) {
 	return player, nil
 }
 
+func (p *Card) makeCopy() (*Card, error) {
+	card := &Card{}
+
+	j, err := json.Marshal(p)
+	if err != nil {
+		return card, err
+	}
+	err = json.Unmarshal(j, card)
+	if err != nil {
+		return card, err
+	}
+
+	return card, nil
+}
+
+func (r *RoomData) makeCopy() (*RoomData, error) {
+	room := &RoomData{}
+
+	j, err := json.Marshal(r)
+	if err != nil {
+		return room, err
+	}
+	err = json.Unmarshal(j, room)
+	if err != nil {
+		return room, err
+	}
+
+	return room, nil
+}
+
 func (p *Player) getTotalPlayerAtkCards(cards []*Card) int32 {
 	var total int32 = 0
 	for _, c := range cards {
@@ -82,4 +112,33 @@ func (p *Player) getTotalPlayerDefCards(cards []*Card) int32 {
 	}
 
 	return total
+}
+
+func findPlayer(id string, p []*PlayerWithCards) (int, bool) {
+	for i, v := range p {
+		if v.Owner.Id == id {
+			return i, true
+		}
+	}
+	return 0, false
+}
+
+func findCard(id string, c []*Card) (int, bool) {
+	for i, v := range c {
+		if v.Id == id {
+			return i, true
+		}
+	}
+	return 0, false
+}
+
+func removeOneCard(id string, c []*Card) []*Card {
+	cards := []*Card{}
+	for _, v := range c {
+		if v.Id != id {
+			c, _ := v.makeCopy()
+			cards = append(cards, c)
+		}
+	}
+	return cards
 }

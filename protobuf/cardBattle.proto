@@ -6,6 +6,7 @@ service cardBattleService {
     rpc cardBattleLogin(player) returns (player) {}
     rpc cardBattleRoomStream(stream roomStream) returns (stream roomStream) {}
     rpc cardBattleLobbyStream(stream lobbyStream) returns (stream lobbyStream) {}
+    rpc cardBattleQueueStream(stream queueStream) returns (stream queueStream) {}
 }
 
 message player {
@@ -66,14 +67,18 @@ message lobbyStream {
         bool onCardSold = 17;
         playerAndCard addCardToDeck = 18;
         playerAndCard removeCardFromDeck = 19;
-        player onjoinWaitingRoom = 20;
-        player onLeftWaitingRoom = 21;
-        roomData onBattleFound = 22;
-        bool onBattleNotFound = 23;
-
     }
 }
 
+
+message queueStream {
+       oneof event {
+            player onjoinWaitingRoom = 1;
+            player onLeftWaitingRoom = 2;
+            roomData onBattleFound = 3;
+            bool onBattleNotFound = 4;
+       }
+}
 
 
 message playerWithCards {
@@ -126,31 +131,32 @@ message roomStream {
         int32 countDown = 4;
         allPlayerBattleResult result = 5;
         player onWinner = 6;
+        bool onDraw = 7;
 
         // for client him self
-        playerAndCard deployCard = 7;
-        playerAndCard pickupCard = 8;
-        roomData getOneRoom = 9;
+        playerAndCard deployCard = 8;
+        playerAndCard pickupCard = 9;
+        roomData getOneRoom = 10;
     }
 
     // for flagging in server
     // 0 = room is good to go
     // 1 = room must be stoped
-    int32 roomFlag = 10;
+    int32 roomFlag = 11;
 
     // for flagging in server and client
     // 0 = all player is not ready 
     // 1 = all player is ready
     // 2 = only some player ready
-    int32 playersFlag = 11;
+    int32 playersFlag = 12;
 
      // for flagging in server
      // 0 = battle countdown is good to go
      // 1 = battle countdown must stop
-    int32 battleFlag = 12;
+    int32 battleFlag = 13;
 
 
     // for join and leave
     // this for identifier
-    string idRoom = 13;
+    string idRoom = 14;
 }

@@ -2,7 +2,6 @@ package cardBattle
 
 import (
 	"io"
-	"log"
 	"time"
 )
 
@@ -390,47 +389,6 @@ func (c *CardBattleServer) CardBattleLobbyStream(stream CardBattleService_CardBa
 					return err
 				}
 			}
-
-		case *LobbyStream_OnjoinWaitingRoom:
-
-			player, errCopy := c.Players[evt.OnjoinWaitingRoom.Id].makeCopy()
-			if errCopy != nil {
-				log.Println(errCopy)
-			}
-
-			c.streamsMtx.RLock()
-			c.PlayersInWaitingRoom[evt.OnjoinWaitingRoom.Id] = player
-			c.streamsMtx.RUnlock()
-
-			err := stream.Send(&LobbyStream{
-				Event: evt,
-			})
-
-			if err != nil {
-				return err
-			}
-
-		case *LobbyStream_OnLeftWaitingRoom:
-
-			c.streamsMtx.RLock()
-			delete(c.PlayersInWaitingRoom, evt.OnLeftWaitingRoom.Id)
-			c.streamsMtx.RUnlock()
-
-			err := stream.Send(&LobbyStream{
-				Event: evt,
-			})
-
-			if err != nil {
-				return err
-			}
-
-		case *LobbyStream_OnBattleFound:
-
-			// left this empty
-
-		case *LobbyStream_OnBattleNotFound:
-
-			// left this empty
 
 		default:
 		}

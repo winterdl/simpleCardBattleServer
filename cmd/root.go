@@ -51,9 +51,13 @@ var rootCmd = &cobra.Command{
 				Broadcast:     make(chan cardBattle.LobbyStream),
 				ClientStreams: make(map[string]chan cardBattle.LobbyStream),
 			}).NewHub(),
-			Room:                 make(map[string]*cardBattle.Room),
-			PlayersInWaitingRoom: make(map[string]*cardBattle.PlayerWithCards),
-			Players:              make(map[string]*cardBattle.PlayerWithCards),
+			Queue: (&cardBattle.QueueRoom{
+				PlayersInWaitingRoom: make(map[string]*cardBattle.PlayerWithCards),
+				Broadcast:            make(chan cardBattle.QueueStream),
+				ClientStreams:        make(map[string]chan cardBattle.QueueStream),
+			}).NewHub(),
+			Room:    make(map[string]*cardBattle.Room),
+			Players: make(map[string]*cardBattle.PlayerWithCards),
 			Config: &cardBattle.ServerConfig{
 				AmountDefaultCash: int32(viper.GetInt("game.cash")),
 				AmountDefaultCard: int32(viper.GetInt("game.card")),
