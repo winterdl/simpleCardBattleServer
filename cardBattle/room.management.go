@@ -10,15 +10,16 @@ import (
 )
 
 type RoomManagementConfig struct {
-	ExpiredTime             int32
-	DefaultMaxPlayer        int32
-	DefaultMaxPlayerDeck    int32
-	DefaultMaxDeploment     int32
-	DefaultEachPlayerHealth int32
-	DefaultCoolDownTime     int32
-	DefaultMaxCardReward    int32
-	DefaultCashReward       int32
-	DefaultLevelReward      int32
+	ExpiredTime              int32
+	DefaultMaxPlayer         int32
+	DefaultMaxPlayerDeck     int32
+	DefaultCurrentDeployment int32
+	DefaultMaxDeployment     int32
+	DefaultEachPlayerHealth  int64
+	DefaultCoolDownTime      int32
+	DefaultMaxCardReward     int32
+	DefaultCashReward        int64
+	DefaultExpReward         int64
 }
 
 func checkIfAlreadyInQueue(p *PlayerWithCards, ps []*PlayerWithCards) bool {
@@ -32,11 +33,11 @@ func checkIfAlreadyInQueue(p *PlayerWithCards, ps []*PlayerWithCards) bool {
 }
 
 func checkIfLevelSame(p *PlayerWithCards, ps []*PlayerWithCards) bool {
-	for _, player := range ps {
-		if player.Owner.Level != p.Owner.Level {
-			return false
-		}
-	}
+	// for _, player := range ps {
+	// 	if player.Owner.Level != p.Owner.Level {
+	// 		return false
+	// 	}
+	// }
 
 	return true
 }
@@ -210,24 +211,38 @@ func (r *RoomManagementConfig) makeRandomRoom(players []*PlayerWithCards) (*Room
 		}
 	}
 
-	cards, err := (&CardShop{TotalCard: int(r.DefaultMaxCardReward)}).RandomCard(int(avgLevel))
+	cards, err := (&CardShop{TotalCard: random(2, int(r.DefaultMaxCardReward))}).RandomCard(int(avgLevel))
 	if err != nil {
 		return &RoomData{}, err
 	}
 
+	reward := &RoomReward{
+		CardReward: cards,
+		CashReward: randomInt64(r.DefaultCashReward, r.DefaultCashReward*int64(avgLevel)),
+		ExpReward:  randomInt64(r.DefaultExpReward, r.DefaultExpReward*int64(avgLevel)),
+	}
+
 	room := &RoomData{
-		Id:               fmt.Sprint("", uuid.Must(uuid.NewV4())),
-		RoomName:         fmt.Sprintf("Room - %s", util.GenerateRandomName()),
-		Players:          []*PlayerWithCards{},
-		MaxPlayer:        r.DefaultMaxPlayer,
-		MaxPlayerDeck:    r.DefaultMaxPlayerDeck,
-		MaxDeploment:     r.DefaultMaxDeploment,
-		EachPlayerHealth: r.DefaultEachPlayerHealth,
-		CoolDownTime:     r.DefaultCoolDownTime,
-		CardReward:       cards,
-		CashReward:       r.DefaultCashReward,
-		LevelReward:      r.DefaultLevelReward,
+		Id:                   fmt.Sprint("", uuid.Must(uuid.NewV4())),
+		RoomName:             fmt.Sprintf("%s", util.GenerateRandomName()),
+		Players:              []*PlayerWithCards{},
+		MaxPlayer:            r.DefaultMaxPlayer,
+		MaxPlayerDeck:        r.DefaultMaxPlayerDeck,
+		MaxCurrentDeployment: r.DefaultCurrentDeployment,
+		MaxDeployment:        r.DefaultMaxDeployment,
+		EachPlayerHealth:     SetHp(r.DefaultEachPlayerHealth, avgLevel),
+		CoolDownTime:         r.DefaultCoolDownTime,
+		Reward:               reward,
 	}
 
 	return room, nil
+}
+
+func SetHp(min int64, level int32) int64 {
+	hp := min
+	max := min * int64(level)
+	for i := min; i < max; i = i * 10 {
+		hp = i
+	}
+	return hp
 }

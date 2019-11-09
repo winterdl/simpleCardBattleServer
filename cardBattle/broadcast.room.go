@@ -141,8 +141,6 @@ func (c *CardBattleServer) startRoomBattleCountdown(id string) {
 				switch value {
 				case 0:
 
-					winers := []*Player{}
-					totalHp := int32(0)
 					results := []*PlayerBattleResult{}
 
 					s.Room[idRoom].streamsMtx.Lock()
@@ -152,6 +150,8 @@ func (c *CardBattleServer) startRoomBattleCountdown(id string) {
 						pResult := &PlayerBattleResult{
 							Owner:         p1.Owner,
 							DamageReceive: 0,
+							EnemyAtk:      0,
+							OwnerDef:      0,
 						}
 
 						for _, p2 := range s.Room[idRoom].Data.Players {
@@ -163,6 +163,8 @@ func (c *CardBattleServer) startRoomBattleCountdown(id string) {
 									dam = 0
 								}
 								pResult.DamageReceive += dam
+								pResult.EnemyAtk = atkP2
+								pResult.OwnerDef = defP1
 							}
 
 						}
@@ -172,50 +174,59 @@ func (c *CardBattleServer) startRoomBattleCountdown(id string) {
 
 					// apply player damage
 					for _, d := range results {
-						for i, _ := range s.Room[idRoom].Data.Players {
-							if s.Room[idRoom].Data.Players[i].Owner.Id == d.Owner.Id {
+						for i, v := range s.Room[idRoom].Data.Players {
+							if v.Owner.Id == d.Owner.Id {
 								s.Room[idRoom].Data.Players[i].Hp -= d.DamageReceive
 
 								// if player hp is negative
 								// force set to 0
-								if s.Room[idRoom].Data.Players[i].Hp < 0 {
+								if v.Hp < 0 {
 									s.Room[idRoom].Data.Players[i].Hp = 0
 								}
-
-								if s.Room[idRoom].Data.Players[i].Hp > 0 {
-									winers = append(winers, s.Room[idRoom].Data.Players[i].Owner)
-								}
-
-								totalHp += s.Room[idRoom].Data.Players[i].Hp
 							}
 						}
 					}
 
-					// remove all player deployed deck
+					winers := []*Player{}
+					totalHp := int64(0)
+					totalCard := 0
+					totalCardDeck := 0
+					players := s.Room[idRoom].Data.Players
+					flagWinner := 0
 
+					// check the winner
+
+					for _, v := range players {
+						if v.Hp > 0 && !checkIfAllPlayerHpIsSame(c.Room[idRoom].Data.Players) {
+							winers = append(winers, v.Owner)
+						}
+						totalCard += len(v.Deck)
+						totalCardDeck += len(v.Deck)
+						totalCard += len(v.Deployed)
+						totalHp += v.Hp
+						flagWinner = 0
+					}
+
+					if totalCard == 0 && !checkIfAllPlayerHpIsSame(c.Room[idRoom].Data.Players) {
+						p, _ := getPlayerWithMaxHp(players)
+						winers = []*Player{}
+						winers = append(winers, p.Owner)
+						flagWinner = 1
+					}
+
+					// remove all player deployed deck
 					for i, _ := range s.Room[idRoom].Data.Players {
 						s.Room[idRoom].Data.Players[i].Deployed = []*Card{}
+					}
+
+					// add more deployable card
+					if s.Room[idRoom].Data.MaxCurrentDeployment < s.Room[idRoom].Data.MaxDeployment {
+						s.Room[idRoom].Data.MaxCurrentDeployment++
 					}
 
 					// from player deck and
 					// update data in room
 					s.Room[idRoom].streamsMtx.Unlock()
-
-					// total hp mean all player hp
-					// is total hp is 0
-					// all player is loss
-					// which mean draw
-					if totalHp == 0 {
-						// broadcash draw
-						c.Room[idRoom].Broadcast <- RoomStream{
-							Event: &RoomStream_OnDraw{
-								OnDraw: true,
-							},
-						}
-
-						// stop the loop
-						return
-					}
 
 					// only need one winer
 					// send who is the winer is
@@ -223,16 +234,41 @@ func (c *CardBattleServer) startRoomBattleCountdown(id string) {
 					if len(winers) == 1 {
 
 						// set winner prize
-						c.Players[winers[0].Id].Owner.Cash += c.Room[idRoom].Data.CashReward
-						//c.Players[winers[0].Id].Owner.Level += c.Room[idRoom].Data.LevelReward
-						for _, card := range c.Room[idRoom].Data.CardReward {
-							c.Players[winers[0].Id].Reserve = append(c.Players[winers[0].Id].Reserve, card)
+						c.Players[winers[0].Id].Owner.Cash += c.Room[idRoom].Data.Reward.CashReward
+						c.Players[winers[0].Id].Owner.Exp += c.Room[idRoom].Data.Reward.ExpReward
+
+						if c.Players[winers[0].Id].Owner.Exp >= c.Players[winers[0].Id].Owner.MaxExp {
+							c.Players[winers[0].Id].Owner.Exp -= c.Players[winers[0].Id].Owner.MaxExp
+							c.Players[winers[0].Id].Owner.Level++
+							c.Players[winers[0].Id].Owner.MaxExp = c.Players[winers[0].Id].Owner.MaxExp * int64(c.Players[winers[0].Id].Owner.Level)
 						}
 
+						cardsReceive := []*Card{}
+						for _, card := range c.Room[idRoom].Data.Reward.CardReward {
+
+							// reserve slot still have space
+							if c.Players[winers[0].Id].Owner.MaxReserveSlot > int32(len(c.Players[winers[0].Id].Reserve)) {
+								c.Players[winers[0].Id].Reserve = append(c.Players[winers[0].Id].Reserve, card)
+								cardsReceive = append(cardsReceive, card)
+							}
+						}
+
+						c.Room[idRoom].Data.Reward.CardReward = cardsReceive
+
 						// broadcash who is winner is
+						//  with winning status
+						// 0 = is enemy player hp is 0
+						// 1 = is enemy hp is lower and all deck card is 0
 						c.Room[idRoom].Broadcast <- RoomStream{
-							Event: &RoomStream_OnWinner{
-								OnWinner: winers[0],
+							Event: &RoomStream_Result{
+								Result: &EndResult{
+									Winner: c.Players[winers[0].Id].Owner,
+
+									// not yet code
+									AllBattleResult: []*PlayerBattleResult{},
+									FlagResult:      int32(flagWinner),
+									Reward:          c.Room[idRoom].Data.Reward,
+								},
 							},
 						}
 
@@ -240,18 +276,66 @@ func (c *CardBattleServer) startRoomBattleCountdown(id string) {
 						return
 					}
 
-					// send signal
-					// announce the battle result
-					c.Room[idRoom].Broadcast <- RoomStream{
-						Event: &RoomStream_Result{
-							Result: &AllPlayerBattleResult{
-								Results: results,
+					// draw
+					// 0 = is all player hp is 0
+					// 1 = is all player card is 0 && hp is 0
+					// 2 is all player card is 0 and all player hp is same
+					if totalHp == 0 && totalCardDeck > 0 {
+
+						// broadcash draw
+						c.Room[idRoom].Broadcast <- RoomStream{
+							Event: &RoomStream_OnDraw{
+								OnDraw: int32(0),
 							},
-						},
+						}
+
+						// set player hp back to normal
+						for i, _ := range c.Room[idRoom].Data.Players {
+							c.Room[idRoom].Data.Players[i].Hp += c.Room[idRoom].Data.EachPlayerHealth
+						}
+
+					} else if totalHp == 0 && totalCardDeck == 0 {
+
+						// broadcash draw
+						c.Room[idRoom].Broadcast <- RoomStream{
+							Event: &RoomStream_OnDraw{
+								OnDraw: int32(1),
+							},
+						}
+
+						// stop the loop
+						return
+
+					} else if checkIfAllPlayerHpIsSame(c.Room[idRoom].Data.Players) && totalCardDeck == 0 {
+
+						// broadcash draw
+						c.Room[idRoom].Broadcast <- RoomStream{
+							Event: &RoomStream_OnDraw{
+								OnDraw: int32(2),
+							},
+						}
+
+						// stop the loop
+						return
+
+					} else {
+
+						// send signal
+						// announce the battle result
+						c.Room[idRoom].Broadcast <- RoomStream{
+							Event: &RoomStream_BattleResult{
+								BattleResult: &AllPlayerBattleResult{
+									Results: results,
+								},
+							},
+						}
 					}
 
 					// reset countdown
 					value = s.Room[idRoom].Data.CoolDownTime
+					if totalCardDeck == 0 {
+						value = 5
+					}
 
 				default:
 

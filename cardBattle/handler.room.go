@@ -1,7 +1,6 @@
 package cardBattle
 
 import (
-	"errors"
 	"io"
 	"time"
 )
@@ -26,60 +25,66 @@ func (c *CardBattleServer) CardBattleRoomStream(stream CardBattleService_CardBat
 			// check if room is exist
 			_, isExist := c.Room[msg.IdRoom]
 			if !isExist {
-				return errors.New("room is not exist")
-			}
-
-			// check is player is already join
-			isJoin := false
-			for _, v := range c.Room[msg.IdRoom].Data.Players {
-				if v.Owner.Id == evt.PlayerJoin.Owner.Id {
-					isJoin = true
-					break
-				}
-			}
-
-			if !isJoin {
-
-				// player is join
-				p, err := c.Players[evt.PlayerJoin.Owner.Id].makeCopy()
+				err := stream.Send(ROOM_NOT_FOUND)
 				if err != nil {
 					return err
 				}
 
-				c.Room[msg.IdRoom].Data.Players = append(c.Room[msg.IdRoom].Data.Players, p)
+			} else {
 
-				// player receive broadcast
-				go c.Room[msg.IdRoom].receiveRoomBroadcasts(stream, p.Owner)
-
-				// broadcast to all player
-				// in room, player in room
-				// is joining
-				c.Room[msg.IdRoom].Broadcast <- RoomStream{
-					IdRoom: msg.IdRoom,
-					Event:  evt,
-				}
-
-				// check player length in room
-				if len(c.Room[msg.IdRoom].Data.Players) == int(c.Room[msg.IdRoom].Data.MaxPlayer) || len(c.Room[msg.IdRoom].ClientStreams) == int(c.Room[msg.IdRoom].Data.MaxPlayer) {
-
-					// start the game
-					c.startRoomBattleCountdown(msg.IdRoom)
-
-				}
-
-				time.Sleep(2 * time.Second)
-
-				_, isExist = c.Room[msg.IdRoom]
-				if isExist {
-					// broadcast room is update
-					c.Room[msg.IdRoom].Broadcast <- RoomStream{
-						IdRoom: msg.IdRoom,
-						Event: &RoomStream_OnRoomUpdate{
-							OnRoomUpdate: c.Room[msg.IdRoom].Data,
-						},
+				// check is player is already join
+				isJoin := false
+				for _, v := range c.Room[msg.IdRoom].Data.Players {
+					if v.Owner.Id == evt.PlayerJoin.Owner.Id {
+						isJoin = true
+						break
 					}
 				}
 
+				if !isJoin {
+
+					// player is join
+					p, err := c.Players[evt.PlayerJoin.Owner.Id].makeCopy()
+					if err != nil {
+						return err
+					}
+
+					p.Hp = c.Room[msg.IdRoom].Data.EachPlayerHealth
+
+					c.Room[msg.IdRoom].Data.Players = append(c.Room[msg.IdRoom].Data.Players, p)
+
+					// player receive broadcast
+					go c.Room[msg.IdRoom].receiveRoomBroadcasts(stream, p.Owner)
+
+					// broadcast to all player
+					// in room, player in room
+					// is joining
+					c.Room[msg.IdRoom].Broadcast <- RoomStream{
+						IdRoom: msg.IdRoom,
+						Event:  evt,
+					}
+
+					// check player length in room
+					if len(c.Room[msg.IdRoom].Data.Players) == int(c.Room[msg.IdRoom].Data.MaxPlayer) || len(c.Room[msg.IdRoom].ClientStreams) == int(c.Room[msg.IdRoom].Data.MaxPlayer) {
+
+						// start the game
+						c.startRoomBattleCountdown(msg.IdRoom)
+
+					}
+
+					time.Sleep(5 * time.Second)
+
+					_, isExist = c.Room[msg.IdRoom]
+					if isExist {
+						// broadcast room is update
+						c.Room[msg.IdRoom].Broadcast <- RoomStream{
+							IdRoom: msg.IdRoom,
+							Event: &RoomStream_OnRoomUpdate{
+								OnRoomUpdate: c.Room[msg.IdRoom].Data,
+							},
+						}
+					}
+				}
 			}
 
 		case *RoomStream_PlayerLeft:
@@ -87,26 +92,31 @@ func (c *CardBattleServer) CardBattleRoomStream(stream CardBattleService_CardBat
 			// check if room is exist
 			_, isExist := c.Room[msg.IdRoom]
 			if !isExist {
-				return errors.New("room is not exist")
-			}
-
-			// remove from player list
-			// by simply create new player list
-			// without player who leave
-			players := []*PlayerWithCards{}
-			for _, p := range c.Room[msg.IdRoom].Data.Players {
-				if p.Owner.Id != evt.PlayerLeft.Owner.Id {
-					players = append(players, p)
+				err := stream.Send(ROOM_NOT_FOUND)
+				if err != nil {
+					return err
 				}
-			}
-			c.Room[msg.IdRoom].Data.Players = players
 
-			// broadcast to all player
-			// in room, player in room
-			// is leaving
-			c.Room[msg.IdRoom].Broadcast <- RoomStream{
-				IdRoom: msg.IdRoom,
-				Event:  evt,
+			} else {
+
+				// remove from player list
+				// by simply create new player list
+				// without player who leave
+				players := []*PlayerWithCards{}
+				for _, p := range c.Room[msg.IdRoom].Data.Players {
+					if p.Owner.Id != evt.PlayerLeft.Owner.Id {
+						players = append(players, p)
+					}
+				}
+				c.Room[msg.IdRoom].Data.Players = players
+
+				// broadcast to all player
+				// in room, player in room
+				// is leaving
+				c.Room[msg.IdRoom].Broadcast <- RoomStream{
+					IdRoom: msg.IdRoom,
+					Event:  evt,
+				}
 			}
 
 		case *RoomStream_OnRoomUpdate:
@@ -117,11 +127,11 @@ func (c *CardBattleServer) CardBattleRoomStream(stream CardBattleService_CardBat
 
 			// left this empty
 
-		case *RoomStream_Result:
+		case *RoomStream_BattleResult:
 
 			// left this empty
 
-		case *RoomStream_OnWinner:
+		case *RoomStream_Result:
 
 			// left this empty
 
@@ -134,27 +144,32 @@ func (c *CardBattleServer) CardBattleRoomStream(stream CardBattleService_CardBat
 			// check if room is exist
 			_, isExist := c.Room[msg.IdRoom]
 			if !isExist {
-				return errors.New("room is not exist")
-			}
+				err := stream.Send(ROOM_NOT_FOUND)
+				if err != nil {
+					return err
+				}
 
-			posPlayer, playerExist := findPlayer(evt.DeployCard.Client.Id, c.Room[msg.IdRoom].Data.Players)
-			cardPos, cardExist := findCard(evt.DeployCard.CardData.Id, c.Room[msg.IdRoom].Data.Players[posPlayer].Deck)
+			} else {
 
-			// add card from player deck
-			// to deployed deck
-			if playerExist && cardExist {
-				card, _ := c.Room[msg.IdRoom].Data.Players[posPlayer].Deck[cardPos].makeCopy()
-				c.Room[msg.IdRoom].Data.Players[posPlayer].Deployed = append(c.Room[msg.IdRoom].Data.Players[posPlayer].Deployed, card)
-				c.Room[msg.IdRoom].Data.Players[posPlayer].Deck = removeOneCard(evt.DeployCard.CardData.Id, c.Room[msg.IdRoom].Data.Players[posPlayer].Deck)
-			}
+				posPlayer, playerExist := findPlayer(evt.DeployCard.Client.Id, c.Room[msg.IdRoom].Data.Players)
+				cardPos, cardExist := findCard(evt.DeployCard.CardData.Id, c.Room[msg.IdRoom].Data.Players[posPlayer].Deck)
 
-			// broadcast to all player
-			// in room, room data is updated
-			c.Room[msg.IdRoom].Broadcast <- RoomStream{
-				IdRoom: msg.IdRoom,
-				Event: &RoomStream_OnRoomUpdate{
-					OnRoomUpdate: c.Room[msg.IdRoom].Data,
-				},
+				// add card from player deck
+				// to deployed deck
+				if playerExist && cardExist {
+					card, _ := c.Room[msg.IdRoom].Data.Players[posPlayer].Deck[cardPos].makeCopy()
+					c.Room[msg.IdRoom].Data.Players[posPlayer].Deployed = append(c.Room[msg.IdRoom].Data.Players[posPlayer].Deployed, card)
+					c.Room[msg.IdRoom].Data.Players[posPlayer].Deck = removeOneCard(evt.DeployCard.CardData.Id, c.Room[msg.IdRoom].Data.Players[posPlayer].Deck)
+				}
+
+				// broadcast to all player
+				// in room, room data is updated
+				c.Room[msg.IdRoom].Broadcast <- RoomStream{
+					IdRoom: msg.IdRoom,
+					Event: &RoomStream_OnRoomUpdate{
+						OnRoomUpdate: c.Room[msg.IdRoom].Data,
+					},
+				}
 			}
 
 		case *RoomStream_PickupCard:
@@ -162,37 +177,53 @@ func (c *CardBattleServer) CardBattleRoomStream(stream CardBattleService_CardBat
 			// check if room is exist
 			_, isExist := c.Room[msg.IdRoom]
 			if !isExist {
-				return errors.New("room is not exist")
+				err := stream.Send(ROOM_NOT_FOUND)
+				if err != nil {
+					return err
+				}
+
+			} else {
+
+				posPlayer, playerExist := findPlayer(evt.PickupCard.Client.Id, c.Room[msg.IdRoom].Data.Players)
+				cardPos, cardExist := findCard(evt.PickupCard.CardData.Id, c.Room[msg.IdRoom].Data.Players[posPlayer].Deployed)
+
+				// add card from player deck
+				// to deployed deck
+				if playerExist && cardExist {
+
+					card, _ := c.Room[msg.IdRoom].Data.Players[posPlayer].Deployed[cardPos].makeCopy()
+
+					// deployable
+					if int32(len(c.Room[msg.IdRoom].Data.Players[posPlayer].Deployed)) < c.Room[msg.IdRoom].Data.MaxCurrentDeployment {
+						c.Room[msg.IdRoom].Data.Players[posPlayer].Deployed = removeOneCard(evt.PickupCard.CardData.Id, c.Room[msg.IdRoom].Data.Players[posPlayer].Deployed)
+						c.Room[msg.IdRoom].Data.Players[posPlayer].Deck = append(c.Room[msg.IdRoom].Data.Players[posPlayer].Deck, card)
+					}
+				}
+
+				// broadcast to all player
+				// in room, room data is updated
+				c.Room[msg.IdRoom].Broadcast <- RoomStream{
+					IdRoom: msg.IdRoom,
+					Event: &RoomStream_OnRoomUpdate{
+						OnRoomUpdate: c.Room[msg.IdRoom].Data,
+					},
+				}
 			}
-
-			posPlayer, playerExist := findPlayer(evt.PickupCard.Client.Id, c.Room[msg.IdRoom].Data.Players)
-			cardPos, cardExist := findCard(evt.PickupCard.CardData.Id, c.Room[msg.IdRoom].Data.Players[posPlayer].Deployed)
-
-			// add card from player deck
-			// to deployed deck
-			if playerExist && cardExist {
-				card, _ := c.Room[msg.IdRoom].Data.Players[posPlayer].Deployed[cardPos].makeCopy()
-				c.Room[msg.IdRoom].Data.Players[posPlayer].Deployed = removeOneCard(evt.PickupCard.CardData.Id, c.Room[msg.IdRoom].Data.Players[posPlayer].Deployed)
-				c.Room[msg.IdRoom].Data.Players[posPlayer].Deck = append(c.Room[msg.IdRoom].Data.Players[posPlayer].Deck, card)
-			}
-
-			// broadcast to all player
-			// in room, room data is updated
-			c.Room[msg.IdRoom].Broadcast <- RoomStream{
-				IdRoom: msg.IdRoom,
-				Event: &RoomStream_OnRoomUpdate{
-					OnRoomUpdate: c.Room[msg.IdRoom].Data,
-				},
-			}
-
-			// broadcast to all player
-			// in room, room data is updated
 
 		case *RoomStream_GetOneRoom:
 
 			// check if room is exist
 			// and return as response
-			if room, isExist := c.Room[msg.IdRoom]; isExist {
+			room, isExist := c.Room[msg.IdRoom]
+			if !isExist {
+
+				err := stream.Send(ROOM_NOT_FOUND)
+				if err != nil {
+					return err
+				}
+
+			} else {
+
 				err := stream.Send(&RoomStream{
 					IdRoom: msg.IdRoom,
 					Event: &RoomStream_GetOneRoom{
@@ -202,6 +233,7 @@ func (c *CardBattleServer) CardBattleRoomStream(stream CardBattleService_CardBat
 				if err != nil {
 					return err
 				}
+
 			}
 
 		default:

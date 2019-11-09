@@ -14,7 +14,11 @@ message player {
     string name = 2;
     string avatar = 3;
     int32 level = 4;
-    int32 cash = 5;
+    int64 cash = 5;
+    int64 exp = 6;
+    int64 maxExp = 7;
+    int32 maxReserveSlot = 8;
+    int32 maxDeckSlot = 9;
 }
 
 message allPlayer {
@@ -24,10 +28,10 @@ message allPlayer {
 message card {
     string id = 1;
     string image = 2;
-    int32 price = 3;
+    int64 price = 3;
     int32 level = 4;
-    int32 atk = 5;
-    int32 def = 6;
+    int64 atk = 5;
+    int64 def = 6;
     int32 color = 7;
     string name = 8;
 }
@@ -39,6 +43,15 @@ message allCard {
 message playerAndCard {
     player client = 1;
     card cardData = 2;
+}
+
+message playerAndSlot {
+    player Owner = 1;
+
+    // type slotType
+    // 1 = slot for deck
+    // 2 = slot for reserve
+    int32 slotType = 2;
 }
 
 
@@ -65,8 +78,11 @@ message lobbyStream {
         bool onCardBought = 15;
         playerAndCard onSellCard = 16;
         bool onCardSold = 17;
-        playerAndCard addCardToDeck = 18;
-        playerAndCard removeCardFromDeck = 19;
+        playerAndSlot onCardDeckSlot = 18;
+        bool onSuccessAddSlot = 19;
+        playerAndCard addCardToDeck = 20;
+        playerAndCard removeCardFromDeck = 21;
+        exceptionErrorMessage excMessage = 22;
     }
 }
 
@@ -86,9 +102,7 @@ message playerWithCards {
     repeated card deck = 2;
     repeated card deployed = 3;
     repeated card reserve = 4;
-    int32 hp = 5;
-    int32 attackPower = 6;
-    int32 damageReceive = 7;
+    int64 hp = 5;
 }
 
 message allPlayerWithCards {
@@ -101,12 +115,17 @@ message roomData {
     repeated playerWithCards players = 4;
     int32 maxPlayer = 5;
     int32 maxPlayerDeck = 6;
-    int32 maxDeploment = 7;
-    int32 eachPlayerHealth = 8;
-    int32 coolDownTime = 9;
-    repeated card cardReward = 10;
-    int32 cashReward = 11;
-    int32 levelReward = 12;
+    int32 maxCurrentDeployment = 7;
+    int32 maxDeployment = 8;
+    int64 eachPlayerHealth = 9;
+    int32 coolDownTime = 10;
+    roomReward reward = 11;
+}
+
+message roomReward {
+    repeated card cardReward = 1;
+    int64 cashReward = 2;
+    int64 expReward = 3;
 }
 
 message allRoom {
@@ -115,7 +134,21 @@ message allRoom {
 
 message playerBattleResult {
     player owner = 1;
-    int32 damageReceive = 2;
+    int64 damageReceive = 2;
+    int64 enemyAtk = 3;
+    int64 ownerDef = 4;
+}
+
+message endResult {
+    player winner = 1;
+    repeated playerBattleResult allBattleResult = 2;
+
+    // for flagging winning status
+    // 0 = is enemy player hp is 0
+    // 1 = is enemy card is 0
+    // 2 = is enemy hp is lower
+    int32 flagResult = 3;
+    roomReward reward = 4;
 }
 
 message allPlayerBattleResult {
@@ -129,34 +162,44 @@ message roomStream {
         playerWithCards playerLeft = 2;
         roomData onRoomUpdate = 3;
         int32 countDown = 4;
-        allPlayerBattleResult result = 5;
-        player onWinner = 6;
-        bool onDraw = 7;
+        allPlayerBattleResult battleResult = 5;
+        endResult result = 6;
 
-        // for client him self
+        // for flagging draw status
+        // 0 = is all player hp is 0
+        // 1 = is all player card is 0 && hp same
+        int32 onDraw = 7;
         playerAndCard deployCard = 8;
         playerAndCard pickupCard = 9;
+
+        // for client him self
         roomData getOneRoom = 10;
+        exceptionErrorMessage excMessage = 11;
     }
 
     // for flagging in server
     // 0 = room is good to go
     // 1 = room must be stoped
-    int32 roomFlag = 11;
+    int32 roomFlag = 12;
 
     // for flagging in server and client
     // 0 = all player is not ready 
     // 1 = all player is ready
     // 2 = only some player ready
-    int32 playersFlag = 12;
+    int32 playersFlag = 13;
 
      // for flagging in server
      // 0 = battle countdown is good to go
      // 1 = battle countdown must stop
-    int32 battleFlag = 13;
+    int32 battleFlag = 14;
 
 
     // for join and leave
     // this for identifier
-    string idRoom = 14;
+    string idRoom = 15;
+}
+
+message exceptionErrorMessage {
+    string exceptionMessage = 1;
+    int32 exceptionFlag = 2;
 }

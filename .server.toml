@@ -7,8 +7,12 @@ port_rest = 8080
 dirhost = "files"
 
 [game]
+level = 1
 cash = 180
-card = 5
+exp = 125
+card = 4
+deck = 4
+reserve = 8
 
 [shop]
 total = 1
@@ -20,10 +24,11 @@ max_item = 20
 [room]
 expired_time = 30
 default_max_player = 2
-default_max_player_deck = 8
-default_max_deploment = 4
-default_each_player_health = 100
-default_cool_down_time = 20
+default_max_player_deck = 12
+default_current_deployment = 2
+default_max_deployment = 6
+default_each_player_health = 500
+default_cool_down_time = 30
 default_max_card_reward = 4
-default_cash_reward = 120
-default_level_reward = 1
+default_cash_reward = 220
+default_exp_reward = 100

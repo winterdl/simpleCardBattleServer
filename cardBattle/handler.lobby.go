@@ -47,6 +47,14 @@ func (c *CardBattleServer) CardBattleLobbyStream(stream CardBattleService_CardBa
 				if err != nil {
 					return err
 				}
+
+			} else {
+
+				err := stream.Send(PLAYER_NOT_FOUND)
+				if err != nil {
+					return err
+				}
+
 			}
 
 		case *LobbyStream_PlayerLeft:
@@ -161,7 +169,15 @@ func (c *CardBattleServer) CardBattleLobbyStream(stream CardBattleService_CardBa
 		case *LobbyStream_GetOneplayer:
 
 			// check player if exist
-			if player, isExist := c.Players[evt.GetOneplayer.Id]; isExist {
+
+			player, isExist := c.Players[evt.GetOneplayer.Id]
+			if !isExist {
+				err = stream.Send(PLAYER_NOT_FOUND)
+				if err != nil {
+					return err
+				}
+
+			} else {
 
 				// send back to client
 				err := stream.Send(&LobbyStream{
@@ -169,10 +185,10 @@ func (c *CardBattleServer) CardBattleLobbyStream(stream CardBattleService_CardBa
 						GetOneplayer: player.Owner,
 					},
 				})
-
 				if err != nil {
 					return err
 				}
+
 			}
 
 		case *LobbyStream_PlayerSuccessJoin:
@@ -229,7 +245,9 @@ func (c *CardBattleServer) CardBattleLobbyStream(stream CardBattleService_CardBa
 			if card, isExist := c.Shop.Cards[evt.OnBuyCard.CardData.Id]; isExist {
 
 				// check if player hass enought cash
-				if c.Players[evt.OnBuyCard.Client.Id].Owner.Cash >= card.Price && c.Shop.Cards[evt.OnBuyCard.CardData.Id].isObtainable(c.Players[evt.OnBuyCard.Client.Id].Owner) {
+				// and slot
+				p := c.Players[evt.OnBuyCard.Client.Id]
+				if p.Owner.Cash >= card.Price && card.isObtainable(p.Owner) && p.Owner.MaxReserveSlot > int32(len(p.Reserve)) {
 
 					c.Players[evt.OnBuyCard.Client.Id].Reserve = append(c.Players[evt.OnBuyCard.Client.Id].Reserve, &Card{
 						Id:    card.Id,
@@ -338,21 +356,70 @@ func (c *CardBattleServer) CardBattleLobbyStream(stream CardBattleService_CardBa
 
 			// just let this empty
 
+		case *LobbyStream_OnCardDeckSlot:
+
+			success := false
+			if player, isExist := c.Players[evt.OnCardDeckSlot.Owner.Id]; isExist {
+
+				switch evt.OnCardDeckSlot.SlotType {
+				case 0:
+
+					deckPrice := int64(int32(120) * player.Owner.MaxDeckSlot)
+					if player.Owner.Cash >= deckPrice {
+						c.Players[evt.OnCardDeckSlot.Owner.Id].Owner.MaxDeckSlot++
+						c.Players[evt.OnCardDeckSlot.Owner.Id].Owner.Cash -= deckPrice
+						success = true
+					}
+
+				case 1:
+
+					deckPrice := int64(int32(100) * player.Owner.MaxReserveSlot)
+					if player.Owner.Cash >= deckPrice {
+						c.Players[evt.OnCardDeckSlot.Owner.Id].Owner.MaxReserveSlot++
+						c.Players[evt.OnCardDeckSlot.Owner.Id].Owner.Cash -= deckPrice
+						success = true
+					}
+
+				default:
+				}
+
+			}
+
+			// send back to client
+			err := stream.Send(&LobbyStream{
+				Event: &LobbyStream_OnSuccessAddSlot{
+					OnSuccessAddSlot: success,
+				},
+			})
+
+			if err != nil {
+				return err
+			}
+
+		case *LobbyStream_OnSuccessAddSlot:
+
+			// just let this empty
+
 		case *LobbyStream_AddCardToDeck:
 
 			if player, isExist := c.Players[evt.AddCardToDeck.Client.Id]; isExist {
-				newDeck := []*Card{}
-				cardTarget := &Card{}
-				for _, card := range player.Reserve {
-					if card.Id != evt.AddCardToDeck.CardData.Id {
-						newDeck = append(newDeck, card)
-					} else {
-						cardTarget = card
-					}
-				}
 
-				player.Reserve = newDeck
-				player.Deck = append(player.Deck, cardTarget)
+				if player.Owner.MaxDeckSlot > int32(len(player.Deck)) {
+
+					newDeck := []*Card{}
+					cardTarget := &Card{}
+					for _, card := range player.Reserve {
+						if card.Id != evt.AddCardToDeck.CardData.Id {
+							newDeck = append(newDeck, card)
+						} else {
+							cardTarget = card
+						}
+					}
+
+					player.Reserve = newDeck
+					player.Deck = append(player.Deck, cardTarget)
+
+				}
 
 				// send back to client
 				err := stream.Send(&LobbyStream{
@@ -367,18 +434,23 @@ func (c *CardBattleServer) CardBattleLobbyStream(stream CardBattleService_CardBa
 		case *LobbyStream_RemoveCardFromDeck:
 
 			if player, isExist := c.Players[evt.RemoveCardFromDeck.Client.Id]; isExist {
-				newDeck := []*Card{}
-				cardTarget := &Card{}
-				for _, card := range player.Deck {
-					if card.Id != evt.RemoveCardFromDeck.CardData.Id {
-						newDeck = append(newDeck, card)
-					} else {
-						cardTarget = card
-					}
-				}
 
-				player.Deck = newDeck
-				player.Reserve = append(player.Reserve, cardTarget)
+				if player.Owner.MaxReserveSlot > int32(len(player.Reserve)) {
+
+					newDeck := []*Card{}
+					cardTarget := &Card{}
+					for _, card := range player.Deck {
+						if card.Id != evt.RemoveCardFromDeck.CardData.Id {
+							newDeck = append(newDeck, card)
+						} else {
+							cardTarget = card
+						}
+					}
+
+					player.Deck = newDeck
+					player.Reserve = append(player.Reserve, cardTarget)
+
+				}
 
 				// send back to client
 				err := stream.Send(&LobbyStream{

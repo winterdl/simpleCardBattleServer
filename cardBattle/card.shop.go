@@ -140,10 +140,10 @@ func (c *CardShop) RandomCard(Level int) ([]*Card, error) {
 			Image: fmt.Sprintf("%s.jpg", images[random(0, len(images))]),
 			Name:  fmt.Sprintf(`%s %s`, firstName, lastName),
 			Color: 0,
-			Price: int32(random(minAtkDef, maxAtkDef)),
+			Price: int64(random(minAtkDef, maxAtkDef)),
 			Level: int32(random(minLevel, maxLevel)),
-			Atk:   int32(random(minAtkDef, maxAtkDef)),
-			Def:   int32(random(minAtkDef, maxAtkDef)),
+			Atk:   int64(random(minAtkDef, maxAtkDef)),
+			Def:   int64(random(minAtkDef, maxAtkDef)),
 		}
 
 		if card.Atk >= 140 || card.Def >= 140 {
@@ -160,9 +160,9 @@ func (c *CardShop) RandomCard(Level int) ([]*Card, error) {
 			card.Color = 0
 		}
 
-		card.Price = card.Price * card.Level
-		card.Atk = card.Atk * card.Level
-		card.Def = card.Def * card.Level
+		card.Price = card.Price * int64(card.Level)
+		card.Atk = card.Atk * int64(card.Level)
+		card.Def = card.Def * int64(card.Level)
 
 		cards = append(cards, card)
 

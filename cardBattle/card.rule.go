@@ -6,8 +6,12 @@ import (
 )
 
 type ServerConfig struct {
-	AmountDefaultCash int32
+	AmountDefaultCash int64
 	AmountDefaultCard int32
+	AmountDefaultExp  int64
+	Level             int32
+	MaxReserveSlot    int32
+	MaxDeckSlot       int32
 }
 
 type NameData struct {
@@ -22,12 +26,16 @@ func random(min int, max int) int {
 	return rand.Intn(max-min) + min
 }
 
-func (p *PlayerWithCards) initPlayerCard(MaxCardOnDeck int32) error {
+func randomInt64(min int64, max int64) int64 {
+	return rand.Int63n(max-min) + min
+}
+
+func (p *PlayerWithCards) initPlayerCard(MaxCardOnDeck int32, maxCardLevel int) error {
 
 	// set card for player card deck
 	for i := 0; i < int(MaxCardOnDeck); i++ {
 
-		cards, err := (&CardShop{TotalCard: int(MaxCardOnDeck)}).RandomCard(4)
+		cards, err := (&CardShop{TotalCard: int(MaxCardOnDeck)}).RandomCard(maxCardLevel)
 		if err != nil {
 			return err
 		}
@@ -38,7 +46,7 @@ func (p *PlayerWithCards) initPlayerCard(MaxCardOnDeck int32) error {
 	// set card for player card reserve
 	for i := 0; i < int(MaxCardOnDeck); i++ {
 
-		cards, err := (&CardShop{TotalCard: int(MaxCardOnDeck)}).RandomCard(4)
+		cards, err := (&CardShop{TotalCard: int(MaxCardOnDeck)}).RandomCard(maxCardLevel)
 		if err != nil {
 			return err
 		}
@@ -49,6 +57,30 @@ func (p *PlayerWithCards) initPlayerCard(MaxCardOnDeck int32) error {
 
 	return nil
 
+}
+
+func checkIfAllPlayerHpIsSame(p []*PlayerWithCards) bool {
+	same := true
+	current := int64(0)
+
+	if len(p) == 1 {
+		return false
+	}
+
+	for i, v := range p {
+
+		if i == 0 {
+			current = v.Hp
+		}
+
+		if v.Hp != current {
+			return false
+		}
+
+		current = v.Hp
+	}
+
+	return same
 }
 
 func (p *PlayerWithCards) makeCopy() (*PlayerWithCards, error) {
@@ -96,8 +128,8 @@ func (r *RoomData) makeCopy() (*RoomData, error) {
 	return room, nil
 }
 
-func (p *Player) getTotalPlayerAtkCards(cards []*Card) int32 {
-	var total int32 = 0
+func (p *Player) getTotalPlayerAtkCards(cards []*Card) int64 {
+	var total int64 = 0
 	for _, c := range cards {
 		total += c.Atk
 	}
@@ -105,15 +137,26 @@ func (p *Player) getTotalPlayerAtkCards(cards []*Card) int32 {
 	return total
 }
 
-func (p *Player) getTotalPlayerDefCards(cards []*Card) int32 {
-	var total int32 = 0
+func (p *Player) getTotalPlayerDefCards(cards []*Card) int64 {
+	var total int64 = 0
 	for _, c := range cards {
 		total += c.Def
 	}
 
 	return total
 }
+func getPlayerWithMaxHp(players []*PlayerWithCards) (*PlayerWithCards, int64) {
+	var current = int64(0)
+	pos := 0
+	for i, c := range players {
+		if i == 0 || c.Hp > current {
+			current = c.Hp
+			pos = i
+		}
+	}
 
+	return players[pos], current
+}
 func findPlayer(id string, p []*PlayerWithCards) (int, bool) {
 	for i, v := range p {
 		if v.Owner.Id == id {

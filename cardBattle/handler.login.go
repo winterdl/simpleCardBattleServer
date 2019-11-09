@@ -25,11 +25,15 @@ func (c *CardBattleServer) CardBattleLogin(ctx context.Context, in *Player) (*Pl
 		// by add card and cash
 		player := &PlayerWithCards{
 			Owner: &Player{
-				Id:     id,
-				Name:   in.Name,
-				Avatar: in.Avatar,
-				Level:  1,
-				Cash:   c.Config.AmountDefaultCash,
+				Id:             id,
+				Name:           in.Name,
+				Avatar:         in.Avatar,
+				Level:          c.Config.Level,
+				Exp:            0,
+				MaxExp:         c.Config.AmountDefaultExp,
+				Cash:           c.Config.AmountDefaultCash,
+				MaxDeckSlot:    c.Config.MaxDeckSlot,
+				MaxReserveSlot: c.Config.MaxReserveSlot,
 			},
 			Deck:     []*Card{},
 			Deployed: []*Card{},
@@ -37,7 +41,7 @@ func (c *CardBattleServer) CardBattleLogin(ctx context.Context, in *Player) (*Pl
 			Hp:       100,
 		}
 
-		player.initPlayerCard(c.Config.AmountDefaultCard)
+		player.initPlayerCard(c.Config.AmountDefaultCard, int(c.Config.Level+4))
 
 		c.streamsMtx.RLock()
 		// add to lobby
