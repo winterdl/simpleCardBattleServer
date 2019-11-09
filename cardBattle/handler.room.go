@@ -2,8 +2,19 @@ package cardBattle
 
 import (
 	"io"
+	"sync"
 	"time"
 )
+
+type Room struct {
+	ID             string
+	RoomExpired    time.Time
+	Data           *RoomData
+	LocalBroadcast chan RoomStream
+	Broadcast      chan RoomStream
+	ClientStreams  map[string]chan RoomStream
+	streamsMtx     sync.RWMutex
+}
 
 func (c *CardBattleServer) CardBattleRoomStream(stream CardBattleService_CardBattleRoomStreamServer) error {
 
@@ -151,12 +162,13 @@ func (c *CardBattleServer) CardBattleRoomStream(stream CardBattleService_CardBat
 
 			} else {
 
-				posPlayer, playerExist := findPlayer(evt.DeployCard.Client.Id, c.Room[msg.IdRoom].Data.Players)
-				cardPos, cardExist := findCard(evt.DeployCard.CardData.Id, c.Room[msg.IdRoom].Data.Players[posPlayer].Deck)
+				room := c.Room[msg.IdRoom]
+				posPlayer, playerExist := findPlayer(evt.DeployCard.Client.Id, room.Data.Players)
+				cardPos, cardExist := findCard(evt.DeployCard.CardData.Id, room.Data.Players[posPlayer].Deck)
 
 				// add card from player deck
 				// to deployed deck
-				if playerExist && cardExist {
+				if playerExist && cardExist && int32(len(room.Data.Players[posPlayer].Deployed)) < room.Data.MaxCurrentDeployment {
 					card, _ := c.Room[msg.IdRoom].Data.Players[posPlayer].Deck[cardPos].makeCopy()
 					c.Room[msg.IdRoom].Data.Players[posPlayer].Deployed = append(c.Room[msg.IdRoom].Data.Players[posPlayer].Deployed, card)
 					c.Room[msg.IdRoom].Data.Players[posPlayer].Deck = removeOneCard(evt.DeployCard.CardData.Id, c.Room[msg.IdRoom].Data.Players[posPlayer].Deck)

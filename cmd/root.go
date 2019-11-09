@@ -78,14 +78,16 @@ var rootCmd = &cobra.Command{
 				DefaultCashReward:        int64(viper.GetInt("room.default_cash_reward")),
 				DefaultExpReward:         int64(viper.GetInt("room.default_exp_reward")),
 			},
-			Shop: &cardBattle.CardShop{
-				Cards:     make(map[string]*cardBattle.Card),
-				TotalCard: viper.GetInt("shop.total"),
-				MinLevel:  viper.GetInt("shop.min"),
-				MaxLevel:  viper.GetInt("shop.max"),
-				Time:      viper.GetInt("shop.time"),
-				MaxItem:   viper.GetInt("shop.max_item"),
-			},
+			Shop: (&cardBattle.CardShop{
+				Cards:         make(map[string]*cardBattle.Card),
+				TotalCard:     viper.GetInt("shop.total"),
+				MinLevel:      viper.GetInt("shop.min"),
+				MaxLevel:      viper.GetInt("shop.max"),
+				Time:          viper.GetInt("shop.time"),
+				MaxItem:       viper.GetInt("shop.max_item"),
+				Broadcast:     make(chan cardBattle.ShopStream),
+				ClientStreams: make(map[string]chan cardBattle.ShopStream),
+			}).NewHub(),
 		}
 
 		lobby.RunCardShop()

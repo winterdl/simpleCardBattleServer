@@ -1,22 +1,11 @@
 package cardBattle
 
 import (
-	"sync"
 	"time"
 
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 )
-
-type Room struct {
-	ID             string
-	RoomExpired    time.Time
-	Data           *RoomData
-	LocalBroadcast chan RoomStream
-	Broadcast      chan RoomStream
-	ClientStreams  map[string]chan RoomStream
-	streamsMtx     sync.RWMutex
-}
 
 func (rm *Room) newRoomHub(c *CardBattleServer) {
 	go func(s *CardBattleServer, r *Room) {

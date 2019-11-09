@@ -11,15 +11,6 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-type CardShop struct {
-	Cards     map[string]*Card
-	TotalCard int
-	MinLevel  int
-	MaxLevel  int
-	Time      int
-	MaxItem   int
-}
-
 func (s *CardBattleServer) RunCardShop() {
 
 	go func(serv *CardBattleServer) {
@@ -27,7 +18,7 @@ func (s *CardBattleServer) RunCardShop() {
 		rand.Seed(time.Now().UnixNano())
 
 		var s = serv.Shop
-		var timeLeft int = 0
+		var timeLeft int32 = 0
 
 		for {
 
@@ -61,13 +52,13 @@ func (s *CardBattleServer) RunCardShop() {
 
 					// broadcast to all player
 					// shop hass been refresh
-					serv.Lobby.Broadcast <- LobbyStream{
-						Event: &LobbyStream_ShopRefresh{
+					serv.Shop.Broadcast <- ShopStream{
+						Event: &ShopStream_ShopRefresh{
 							ShopRefresh: true,
 						},
 					}
 
-					timeLeft = s.Time
+					timeLeft = int32(s.Time)
 
 				default:
 
@@ -76,12 +67,11 @@ func (s *CardBattleServer) RunCardShop() {
 
 					// broadcast to all player
 					// countdown for next shop item
-					serv.Lobby.Broadcast <- LobbyStream{
-						Event: &LobbyStream_ShopRefreshTime{
-							ShopRefreshTime: int32(timeLeft),
+					serv.Shop.Broadcast <- ShopStream{
+						Event: &ShopStream_ShopRefreshTime{
+							ShopRefreshTime: timeLeft,
 						},
 					}
-
 				}
 			}
 		}

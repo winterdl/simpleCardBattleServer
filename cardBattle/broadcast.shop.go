@@ -5,8 +5,8 @@ import (
 	status "google.golang.org/grpc/status"
 )
 
-func (b *Lobby) NewHub() *Lobby {
-	go func(h *Lobby) {
+func (b *CardShop) NewHub() *CardShop {
+	go func(h *CardShop) {
 		for {
 			for res := range h.Broadcast {
 				h.streamsMtx.RLock()
@@ -23,9 +23,10 @@ func (b *Lobby) NewHub() *Lobby {
 
 	return b
 }
-func (c *Lobby) openStream(tkn string) (stream chan LobbyStream) {
 
-	stream = make(chan LobbyStream, 100)
+func (c *CardShop) openStream(tkn string) (stream chan ShopStream) {
+
+	stream = make(chan ShopStream, 100)
 	c.streamsMtx.Lock()
 	c.ClientStreams[tkn] = stream
 	c.streamsMtx.Unlock()
@@ -33,7 +34,7 @@ func (c *Lobby) openStream(tkn string) (stream chan LobbyStream) {
 	return
 }
 
-func (c *Lobby) closeStream(tkn string) {
+func (c *CardShop) closeStream(tkn string) {
 
 	c.streamsMtx.Lock()
 	if stream, ok := c.ClientStreams[tkn]; ok {
@@ -44,7 +45,7 @@ func (c *Lobby) closeStream(tkn string) {
 	c.streamsMtx.Unlock()
 }
 
-func (c *Lobby) receiveBroadcasts(stream CardBattleService_CardBattleLobbyStreamServer, idPlayer string) {
+func (c *CardShop) receiveBroadcasts(stream CardBattleService_CardBattleShopStreamServer, idPlayer string) {
 
 	streamClient := c.openStream(idPlayer)
 	defer c.closeStream(idPlayer)

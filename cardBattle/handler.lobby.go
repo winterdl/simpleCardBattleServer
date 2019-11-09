@@ -2,8 +2,15 @@ package cardBattle
 
 import (
 	"io"
+	"sync"
 	"time"
 )
+
+type Lobby struct {
+	Broadcast     chan LobbyStream
+	ClientStreams map[string]chan LobbyStream
+	streamsMtx    sync.RWMutex
+}
 
 func (c *CardBattleServer) CardBattleLobbyStream(stream CardBattleService_CardBattleLobbyStreamServer) error {
 
@@ -87,64 +94,6 @@ func (c *CardBattleServer) CardBattleLobbyStream(stream CardBattleService_CardBa
 				return err
 			}
 
-		case *LobbyStream_CreateRoom:
-
-			// create game match
-			// this is for custome match
-			// but currently not dev yet
-
-			// broadcast to lobby
-			// player hass create room
-			c.Lobby.Broadcast <- LobbyStream{
-				Event: evt,
-			}
-
-		case *LobbyStream_ShopRefreshTime:
-
-			// just let this empty
-
-		case *LobbyStream_ShopRefresh:
-
-			// just let this empty
-
-		case *LobbyStream_GetOneRoom:
-
-			// if room exist
-			if room, isExist := c.Room[evt.GetOneRoom.Id]; isExist {
-
-				// send back to client
-				err := stream.Send(&LobbyStream{
-					Event: &LobbyStream_GetOneRoom{
-						GetOneRoom: room.Data,
-					},
-				})
-
-				if err != nil {
-					return err
-				}
-			}
-
-		case *LobbyStream_GetAllRooms:
-
-			// get all room
-			rooms := []*RoomData{}
-			for _, room := range c.Room {
-				rooms = append(rooms, room.Data)
-			}
-
-			// send back to client
-			err := stream.Send(&LobbyStream{
-				Event: &LobbyStream_GetAllRooms{
-					GetAllRooms: &AllRoom{
-						Rooms: rooms,
-					},
-				},
-			})
-
-			if err != nil {
-				return err
-			}
-
 		case *LobbyStream_GetAllPlayers:
 
 			// get all player
@@ -215,190 +164,6 @@ func (c *CardBattleServer) CardBattleLobbyStream(stream CardBattleService_CardBa
 					return err
 				}
 			}
-
-		case *LobbyStream_AllCardInShopping:
-
-			// query all card in shop
-			cards := []*Card{}
-			for _, card := range c.Shop.Cards {
-				cards = append(cards, card)
-			}
-
-			// send back to client
-			err := stream.Send(&LobbyStream{
-				Event: &LobbyStream_AllCardInShopping{
-					AllCardInShopping: &AllCard{
-						Cards: cards,
-					},
-				},
-			})
-
-			if err != nil {
-				return err
-			}
-
-		case *LobbyStream_OnBuyCard:
-
-			successBuy := false
-
-			// check is card exist in shop item
-			if card, isExist := c.Shop.Cards[evt.OnBuyCard.CardData.Id]; isExist {
-
-				// check if player hass enought cash
-				// and slot
-				p := c.Players[evt.OnBuyCard.Client.Id]
-				if p.Owner.Cash >= card.Price && card.isObtainable(p.Owner) && p.Owner.MaxReserveSlot > int32(len(p.Reserve)) {
-
-					c.Players[evt.OnBuyCard.Client.Id].Reserve = append(c.Players[evt.OnBuyCard.Client.Id].Reserve, &Card{
-						Id:    card.Id,
-						Image: card.Image,
-						Price: card.Price,
-						Level: card.Level,
-						Atk:   card.Atk,
-						Def:   card.Def,
-						Color: card.Color,
-						Name:  card.Name,
-					})
-
-					delete(c.Shop.Cards, card.Id)
-
-					c.Players[evt.OnBuyCard.Client.Id].Owner.Cash -= card.Price
-
-					successBuy = true
-
-					// broadcast to all player
-					// to update shop item
-					c.Lobby.Broadcast <- LobbyStream{
-						Event: &LobbyStream_ShopRefresh{
-							ShopRefresh: true,
-						},
-					}
-
-					time.Sleep(1 * time.Second)
-				}
-			}
-
-			// send result to client
-			// card hass been bought
-			// and hass been added to player
-			// reserve deck
-			err := stream.Send(&LobbyStream{
-				Event: &LobbyStream_OnCardBought{
-					OnCardBought: successBuy,
-				},
-			})
-
-			if err != nil {
-				return err
-			}
-
-		case *LobbyStream_OnCardBought:
-
-			// just let this empty
-
-		case *LobbyStream_OnSellCard:
-
-			successSell := false
-			_, isExist := c.Players[evt.OnSellCard.Client.Id]
-
-			// check is card exist in player reserve
-			if isExist {
-
-				card := &Card{}
-				for _, c := range c.Players[evt.OnSellCard.Client.Id].Reserve {
-					if c.Id == evt.OnSellCard.CardData.Id {
-						card = c
-						break
-					}
-				}
-
-				c.Shop.Cards[evt.OnSellCard.CardData.Id] = &Card{
-					Id:    card.Id,
-					Image: card.Image,
-					Price: card.Price,
-					Level: card.Level,
-					Atk:   card.Atk,
-					Def:   card.Def,
-					Color: card.Color,
-					Name:  card.Name,
-				}
-
-				newDeck := []*Card{}
-				for _, cardReserve := range c.Players[evt.OnSellCard.Client.Id].Reserve {
-					if cardReserve.Id != card.Id {
-						newDeck = append(newDeck, cardReserve)
-					}
-				}
-
-				c.Players[evt.OnSellCard.Client.Id].Reserve = newDeck
-
-				c.Players[evt.OnSellCard.Client.Id].Owner.Cash += card.Price
-
-				successSell = true
-
-			}
-
-			// send result to client
-			// card hass been sold
-			// and hass been removefrom player
-			// reserve deck
-			err := stream.Send(&LobbyStream{
-				Event: &LobbyStream_OnCardSold{
-					OnCardSold: successSell,
-				},
-			})
-
-			if err != nil {
-				return err
-			}
-
-		case *LobbyStream_OnCardSold:
-
-			// just let this empty
-
-		case *LobbyStream_OnCardDeckSlot:
-
-			success := false
-			if player, isExist := c.Players[evt.OnCardDeckSlot.Owner.Id]; isExist {
-
-				switch evt.OnCardDeckSlot.SlotType {
-				case 0:
-
-					deckPrice := int64(int32(120) * player.Owner.MaxDeckSlot)
-					if player.Owner.Cash >= deckPrice {
-						c.Players[evt.OnCardDeckSlot.Owner.Id].Owner.MaxDeckSlot++
-						c.Players[evt.OnCardDeckSlot.Owner.Id].Owner.Cash -= deckPrice
-						success = true
-					}
-
-				case 1:
-
-					deckPrice := int64(int32(100) * player.Owner.MaxReserveSlot)
-					if player.Owner.Cash >= deckPrice {
-						c.Players[evt.OnCardDeckSlot.Owner.Id].Owner.MaxReserveSlot++
-						c.Players[evt.OnCardDeckSlot.Owner.Id].Owner.Cash -= deckPrice
-						success = true
-					}
-
-				default:
-				}
-
-			}
-
-			// send back to client
-			err := stream.Send(&LobbyStream{
-				Event: &LobbyStream_OnSuccessAddSlot{
-					OnSuccessAddSlot: success,
-				},
-			})
-
-			if err != nil {
-				return err
-			}
-
-		case *LobbyStream_OnSuccessAddSlot:
-
-			// just let this empty
 
 		case *LobbyStream_AddCardToDeck:
 

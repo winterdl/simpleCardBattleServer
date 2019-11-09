@@ -7,6 +7,7 @@ service cardBattleService {
     rpc cardBattleRoomStream(stream roomStream) returns (stream roomStream) {}
     rpc cardBattleLobbyStream(stream lobbyStream) returns (stream lobbyStream) {}
     rpc cardBattleQueueStream(stream queueStream) returns (stream queueStream) {}
+    rpc cardBattleShopStream(stream shopStream) returns (stream shopStream) {}
 }
 
 message player {
@@ -61,28 +62,37 @@ message lobbyStream {
         // for broadcast
         player playerJoin = 1;
         player playerLeft = 2;
-        roomData createRoom = 3;
-        int32 shopRefreshTime = 4;
-        bool shopRefresh = 5;
 
         // for client him self
-        roomData getOneRoom = 6;
-        allRoom getAllRooms = 7;
-        allPlayer getAllPlayers = 8;
-        player getOneplayer = 9;
-        player playerSuccessJoin = 10;
-        player playerSuccessLeft = 11;
-        playerWithCards onePlayerWithCards = 12;
-        allCard allCardInShopping = 13;
-        playerAndCard onBuyCard = 14;
-        bool onCardBought = 15;
-        playerAndCard onSellCard = 16;
-        bool onCardSold = 17;
-        playerAndSlot onCardDeckSlot = 18;
-        bool onSuccessAddSlot = 19;
-        playerAndCard addCardToDeck = 20;
-        playerAndCard removeCardFromDeck = 21;
-        exceptionErrorMessage excMessage = 22;
+        allPlayer getAllPlayers = 3;
+        player getOneplayer = 4;
+        player playerSuccessJoin = 5;
+        player playerSuccessLeft = 6;
+        playerWithCards onePlayerWithCards = 7;
+        playerAndCard addCardToDeck = 8;
+        playerAndCard removeCardFromDeck = 9;
+        exceptionErrorMessage excMessage = 10;
+    }
+}
+
+message shopStream {
+
+    oneof event {
+        player playerJoin = 1;
+        // for broadcast
+        int32 shopRefreshTime = 2;
+        bool shopRefresh = 3;
+
+        // for client him self
+        playerWithCards onePlayerWithCards = 4;
+        allCard allCardInShopping = 5;
+        playerAndCard onBuyCard = 6;
+        bool onCardBought = 7;
+        playerAndCard onSellCard = 8;
+        bool onCardSold = 9;
+        playerAndSlot onCardDeckSlot = 10;
+        bool onSuccessAddSlot = 11;
+        exceptionErrorMessage excMessage = 12;
     }
 }
 

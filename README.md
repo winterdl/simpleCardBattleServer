@@ -33,7 +33,7 @@ del main.exe && go build main.go && main.exe --config=.server.toml
 2) batasan deploy kartu untuk room (ok)
 3) maksimal dan minimal kartu di deck & reserve berdasarkan level (ok)
 4) naik level dengan exp sistem (ok)
-5) room hanya mengambil beberapa kartu dari deck untuk di set ke deck player di room
-6) add rule kartu ditutup saat countdown lebih dari 5 detik
+5) memisahkan menu shop
+6) custom card
 
 ```
