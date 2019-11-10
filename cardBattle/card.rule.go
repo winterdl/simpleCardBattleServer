@@ -30,12 +30,12 @@ func randomInt64(min int64, max int64) int64 {
 	return rand.Int63n(max-min) + min
 }
 
-func (p *PlayerWithCards) initPlayerCard(MaxCardOnDeck int32, maxCardLevel int) error {
+func (p *PlayerWithCards) initPlayerCard(MaxCardOnDeck int32, maxCardLevel int, hostUrl string) error {
 
 	// set card for player card deck
 	for i := 0; i < int(MaxCardOnDeck); i++ {
 
-		cards, err := (&CardShop{TotalCard: int(MaxCardOnDeck)}).RandomCard(maxCardLevel)
+		cards, err := (&CardShop{TotalCard: int(MaxCardOnDeck), URLFile: hostUrl}).RandomCard(maxCardLevel)
 		if err != nil {
 			return err
 		}
@@ -46,7 +46,7 @@ func (p *PlayerWithCards) initPlayerCard(MaxCardOnDeck int32, maxCardLevel int) 
 	// set card for player card reserve
 	for i := 0; i < int(MaxCardOnDeck); i++ {
 
-		cards, err := (&CardShop{TotalCard: int(MaxCardOnDeck)}).RandomCard(maxCardLevel)
+		cards, err := (&CardShop{TotalCard: int(MaxCardOnDeck), URLFile: hostUrl}).RandomCard(maxCardLevel)
 		if err != nil {
 			return err
 		}

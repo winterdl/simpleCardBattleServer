@@ -165,68 +165,6 @@ func (c *CardBattleServer) CardBattleLobbyStream(stream CardBattleService_CardBa
 				}
 			}
 
-		case *LobbyStream_AddCardToDeck:
-
-			if player, isExist := c.Players[evt.AddCardToDeck.Client.Id]; isExist {
-
-				if player.Owner.MaxDeckSlot > int32(len(player.Deck)) {
-
-					newDeck := []*Card{}
-					cardTarget := &Card{}
-					for _, card := range player.Reserve {
-						if card.Id != evt.AddCardToDeck.CardData.Id {
-							newDeck = append(newDeck, card)
-						} else {
-							cardTarget = card
-						}
-					}
-
-					player.Reserve = newDeck
-					player.Deck = append(player.Deck, cardTarget)
-
-				}
-
-				// send back to client
-				err := stream.Send(&LobbyStream{
-					Event: evt,
-				})
-
-				if err != nil {
-					return err
-				}
-			}
-
-		case *LobbyStream_RemoveCardFromDeck:
-
-			if player, isExist := c.Players[evt.RemoveCardFromDeck.Client.Id]; isExist {
-
-				if player.Owner.MaxReserveSlot > int32(len(player.Reserve)) {
-
-					newDeck := []*Card{}
-					cardTarget := &Card{}
-					for _, card := range player.Deck {
-						if card.Id != evt.RemoveCardFromDeck.CardData.Id {
-							newDeck = append(newDeck, card)
-						} else {
-							cardTarget = card
-						}
-					}
-
-					player.Deck = newDeck
-					player.Reserve = append(player.Reserve, cardTarget)
-
-				}
-
-				// send back to client
-				err := stream.Send(&LobbyStream{
-					Event: evt,
-				})
-
-				if err != nil {
-					return err
-				}
-			}
-
 		default:
 		}
 	}

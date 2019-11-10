@@ -180,6 +180,7 @@ func (c *CardBattleServer) startRoomBattleCountdown(id string) {
 					totalHp := int64(0)
 					totalCard := 0
 					totalCardDeck := 0
+					totalCardDeploy := 0
 					players := s.Room[idRoom].Data.Players
 					flagWinner := 0
 
@@ -189,18 +190,28 @@ func (c *CardBattleServer) startRoomBattleCountdown(id string) {
 						if v.Hp > 0 && !checkIfAllPlayerHpIsSame(c.Room[idRoom].Data.Players) {
 							winers = append(winers, v.Owner)
 						}
-						totalCard += len(v.Deck)
+
 						totalCardDeck += len(v.Deck)
-						totalCard += len(v.Deployed)
+						totalCardDeploy += len(v.Deployed)
+
 						totalHp += v.Hp
 						flagWinner = 0
 					}
+
+					totalCard = totalCardDeck + totalCardDeploy
 
 					if totalCard == 0 && !checkIfAllPlayerHpIsSame(c.Room[idRoom].Data.Players) {
 						p, _ := getPlayerWithMaxHp(players)
 						winers = []*Player{}
 						winers = append(winers, p.Owner)
 						flagWinner = 1
+					}
+
+					if totalCardDeploy == 0 && totalCardDeck > 0 && !checkIfAllPlayerHpIsSame(c.Room[idRoom].Data.Players) {
+						p, _ := getPlayerWithMaxHp(players)
+						winers = []*Player{}
+						winers = append(winers, p.Owner)
+						flagWinner = 2
 					}
 
 					// remove all player deployed deck
@@ -248,6 +259,7 @@ func (c *CardBattleServer) startRoomBattleCountdown(id string) {
 						//  with winning status
 						// 0 = is enemy player hp is 0
 						// 1 = is enemy hp is lower and all deck card is 0
+						// 2 = is enemy hp is lower and all deploy card is 0
 						c.Room[idRoom].Broadcast <- RoomStream{
 							Event: &RoomStream_Result{
 								Result: &EndResult{
@@ -332,7 +344,10 @@ func (c *CardBattleServer) startRoomBattleCountdown(id string) {
 					// count down for battle value
 					c.Room[idRoom].Broadcast <- RoomStream{
 						Event: &RoomStream_CountDown{
-							CountDown: value,
+							CountDown: &CountDownRoomUpdate{
+								UpdatedRoom: s.Room[idRoom].Data,
+								BattleTime:  value,
+							},
 						},
 					}
 

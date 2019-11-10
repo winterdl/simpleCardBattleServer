@@ -1,18 +1,9 @@
 package cardBattle
 
 import (
-	"sync"
-
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 )
-
-type QueueRoom struct {
-	PlayersInWaitingRoom map[string]*PlayerWithCards
-	Broadcast            chan QueueStream
-	ClientStreams        map[string]chan QueueStream
-	streamsMtx           sync.RWMutex
-}
 
 func (b *QueueRoom) NewHub() *QueueRoom {
 	go func(h *QueueRoom) {

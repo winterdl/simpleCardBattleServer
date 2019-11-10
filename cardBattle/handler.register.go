@@ -7,7 +7,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-func (c *CardBattleServer) CardBattleLogin(ctx context.Context, in *Player) (*Player, error) {
+func (c *CardBattleServer) CardBattleRegister(ctx context.Context, in *Player) (*Player, error) {
 
 	response := &Player{}
 
@@ -41,7 +41,12 @@ func (c *CardBattleServer) CardBattleLogin(ctx context.Context, in *Player) (*Pl
 			Hp:       100,
 		}
 
-		player.initPlayerCard(c.Config.AmountDefaultCard, int(c.Config.Level+4))
+		lvlCard := 2
+		if c.Config.Level > 1 {
+			lvlCard = int(c.Config.Level)
+		}
+
+		player.initPlayerCard(c.Config.AmountDefaultCard, lvlCard, c.Shop.URLFile)
 
 		c.streamsMtx.RLock()
 		// add to lobby

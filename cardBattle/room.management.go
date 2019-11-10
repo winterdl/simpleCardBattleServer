@@ -89,7 +89,7 @@ func (r *CardBattleServer) RunRoomMaker() {
 					s.Queue.streamsMtx.Unlock()
 
 					// make random room
-					room, err := s.RoomConfig.makeRandomRoom(players)
+					room, err := s.RoomConfig.makeRandomRoom(players, s.Shop.URLFile)
 					if err != nil {
 						log.Println(err)
 					}
@@ -202,7 +202,7 @@ func (r *CardBattleServer) RemoveEmptyRoom() {
 		}
 	}(r)
 }
-func (r *RoomManagementConfig) makeRandomRoom(players []*PlayerWithCards) (*RoomData, error) {
+func (r *RoomManagementConfig) makeRandomRoom(players []*PlayerWithCards, URLFile string) (*RoomData, error) {
 
 	var avgLevel int32 = 2
 	for _, p := range players {
@@ -211,7 +211,7 @@ func (r *RoomManagementConfig) makeRandomRoom(players []*PlayerWithCards) (*Room
 		}
 	}
 
-	cards, err := (&CardShop{TotalCard: random(2, int(r.DefaultMaxCardReward))}).RandomCard(int(avgLevel))
+	cards, err := (&CardShop{TotalCard: random(2, int(r.DefaultMaxCardReward)), URLFile: URLFile}).RandomCard(int(avgLevel))
 	if err != nil {
 		return &RoomData{}, err
 	}

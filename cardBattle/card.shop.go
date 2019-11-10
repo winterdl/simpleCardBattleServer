@@ -127,7 +127,7 @@ func (c *CardShop) RandomCard(Level int) ([]*Card, error) {
 
 		card := &Card{
 			Id:    fmt.Sprint("", uuid.Must(uuid.NewV4())),
-			Image: fmt.Sprintf("%s.jpg", images[random(0, len(images))]),
+			Image: fmt.Sprintf("%s%s.jpg", c.URLFile, images[random(0, len(images))]),
 			Name:  fmt.Sprintf(`%s %s`, firstName, lastName),
 			Color: 0,
 			Price: int64(random(minAtkDef, maxAtkDef)),
@@ -136,20 +136,7 @@ func (c *CardShop) RandomCard(Level int) ([]*Card, error) {
 			Def:   int64(random(minAtkDef, maxAtkDef)),
 		}
 
-		if card.Atk >= 140 || card.Def >= 140 {
-			card.Color = 4
-		} else if card.Atk >= 120 || card.Def >= 120 {
-			card.Color = 3
-		} else if card.Atk >= 90 || card.Def >= 90 {
-			card.Color = 2
-		} else if card.Atk >= 80 || card.Def >= 80 {
-			card.Color = 1
-		} else if card.Atk >= 60 || card.Def >= 60 {
-			card.Color = 1
-		} else if card.Atk >= 30 || card.Def >= 30 {
-			card.Color = 0
-		}
-
+		card.Color = checkCardColor(card, card.Level)
 		card.Price = card.Price * int64(card.Level)
 		card.Atk = card.Atk * int64(card.Level)
 		card.Def = card.Def * int64(card.Level)
@@ -159,4 +146,21 @@ func (c *CardShop) RandomCard(Level int) ([]*Card, error) {
 	}
 
 	return cards, nil
+}
+
+func checkCardColor(card *Card, lvl int32) int32 {
+	if card.Atk >= int64(140*lvl) || card.Def >= int64(140*lvl) {
+		return 4
+	} else if card.Atk >= int64(120*lvl) || card.Def >= int64(120*lvl) {
+		return 3
+	} else if card.Atk >= int64(90*lvl) || card.Def >= int64(90*lvl) {
+		return 2
+	} else if card.Atk >= int64(80*lvl) || card.Def >= int64(80*lvl) {
+		return 1
+	} else if card.Atk >= int64(60*lvl) || card.Def >= int64(60*lvl) {
+		return 1
+	} else if card.Atk >= int64(30*lvl) || card.Def >= int64(30*lvl) {
+		return 0
+	}
+	return 0
 }

@@ -3,7 +3,15 @@ package cardBattle
 import (
 	"io"
 	"log"
+	"sync"
 )
+
+type QueueRoom struct {
+	PlayersInWaitingRoom map[string]*PlayerWithCards
+	Broadcast            chan QueueStream
+	ClientStreams        map[string]chan QueueStream
+	streamsMtx           sync.RWMutex
+}
 
 func (c *CardBattleServer) CardBattleQueueStream(stream CardBattleService_CardBattleQueueStreamServer) error {
 
@@ -45,9 +53,11 @@ func (c *CardBattleServer) CardBattleQueueStream(stream CardBattleService_CardBa
 
 		case *QueueStream_OnLeftWaitingRoom:
 
-			c.Queue.streamsMtx.RLock()
-			delete(c.Queue.PlayersInWaitingRoom, evt.OnLeftWaitingRoom.Id)
-			c.Queue.streamsMtx.RUnlock()
+			c.Queue.streamsMtx.Lock()
+			if p, exists := c.Queue.PlayersInWaitingRoom[evt.OnLeftWaitingRoom.Id]; exists {
+				delete(c.Queue.PlayersInWaitingRoom, p.Owner.Id)
+			}
+			c.Queue.streamsMtx.Unlock()
 
 			err := stream.Send(&QueueStream{
 				Event: evt,

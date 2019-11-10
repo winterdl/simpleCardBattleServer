@@ -13,13 +13,13 @@ type CardShop struct {
 	MaxLevel      int
 	Time          int
 	MaxItem       int
+	URLFile       string
 	Broadcast     chan ShopStream
 	ClientStreams map[string]chan ShopStream
 	streamsMtx    sync.RWMutex
 }
 
 func (c *CardBattleServer) CardBattleShopStream(stream CardBattleService_CardBattleShopStreamServer) error {
-
 
 	for {
 
@@ -36,8 +36,8 @@ func (c *CardBattleServer) CardBattleShopStream(stream CardBattleService_CardBat
 
 		case *ShopStream_PlayerJoin:
 
-			go c.Shop.receiveBroadcasts(stream,evt.PlayerJoin.Id)
-			
+			go c.Shop.receiveBroadcasts(stream, evt.PlayerJoin.Id)
+
 			err := stream.Send(&ShopStream{
 				Event: evt,
 			})
@@ -45,7 +45,6 @@ func (c *CardBattleServer) CardBattleShopStream(stream CardBattleService_CardBat
 			if err != nil {
 				return err
 			}
-
 
 		case *ShopStream_ShopRefreshTime:
 
@@ -209,6 +208,59 @@ func (c *CardBattleServer) CardBattleShopStream(stream CardBattleService_CardBat
 			}
 
 		case *ShopStream_OnCardSold:
+
+			// just let this empty
+
+		case *ShopStream_OnUpgradeCard:
+
+			successUpgrade := false
+			p, isExist := c.Players[evt.OnUpgradeCard.Client.Id]
+			if isExist {
+
+				card := &Card{}
+				posCard := 0
+				for i, c := range c.Players[evt.OnUpgradeCard.Client.Id].Reserve {
+					if c.Id == evt.OnUpgradeCard.CardData.Id {
+						cpCard, _ := c.makeCopy()
+						card = cpCard
+						posCard = i
+						break
+					}
+				}
+
+				priceUpgrade := card.Price
+				if p.Owner.Cash >= priceUpgrade && card.isObtainable(p.Owner) {
+
+					card.Level++
+					minAtkDef := 10
+					maxAtkDef := 150
+
+					card.Price = int64(int32(random(minAtkDef, maxAtkDef)) * card.Level)
+					card.Atk = int64(int32(random(minAtkDef, maxAtkDef)) * card.Level)
+					card.Def = int64(int32(random(minAtkDef, maxAtkDef)) * card.Level)
+					card.Color = checkCardColor(card, card.Level)
+
+					c.Players[evt.OnUpgradeCard.Client.Id].Reserve[posCard] = card
+					c.Players[evt.OnUpgradeCard.Client.Id].Owner.Cash -= priceUpgrade
+
+					successUpgrade = true
+				}
+			}
+
+			// send result to client
+			// card hass been upgrade
+			// reserve deck
+			err := stream.Send(&ShopStream{
+				Event: &ShopStream_OnCardUpgraded{
+					OnCardUpgraded: successUpgrade,
+				},
+			})
+
+			if err != nil {
+				return err
+			}
+
+		case *ShopStream_OnCardUpgraded:
 
 			// just let this empty
 

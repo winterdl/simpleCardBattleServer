@@ -3,11 +3,12 @@ syntax = "proto3";
 package cardBattle;
 
 service cardBattleService {
-    rpc cardBattleLogin(player) returns (player) {}
+    rpc cardBattleRegister(player) returns (player) {}
     rpc cardBattleRoomStream(stream roomStream) returns (stream roomStream) {}
     rpc cardBattleLobbyStream(stream lobbyStream) returns (stream lobbyStream) {}
     rpc cardBattleQueueStream(stream queueStream) returns (stream queueStream) {}
     rpc cardBattleShopStream(stream shopStream) returns (stream shopStream) {}
+    rpc cardBattleProfileStream(stream profileStream) returns (stream profileStream) {}
 }
 
 message player {
@@ -69,17 +70,27 @@ message lobbyStream {
         player playerSuccessJoin = 5;
         player playerSuccessLeft = 6;
         playerWithCards onePlayerWithCards = 7;
-        playerAndCard addCardToDeck = 8;
-        playerAndCard removeCardFromDeck = 9;
-        exceptionErrorMessage excMessage = 10;
+        exceptionErrorMessage excMessage = 8;
+    }
+}
+
+message profileStream {
+    oneof event {
+
+        // for client him self
+        playerWithCards onePlayerWithCards = 1;
+        playerAndCard addCardToDeck = 2;
+        playerAndCard removeCardFromDeck = 3;
+        exceptionErrorMessage excMessage = 4;
     }
 }
 
 message shopStream {
 
     oneof event {
-        player playerJoin = 1;
+
         // for broadcast
+        player playerJoin = 1;
         int32 shopRefreshTime = 2;
         bool shopRefresh = 3;
 
@@ -90,9 +101,11 @@ message shopStream {
         bool onCardBought = 7;
         playerAndCard onSellCard = 8;
         bool onCardSold = 9;
-        playerAndSlot onCardDeckSlot = 10;
-        bool onSuccessAddSlot = 11;
-        exceptionErrorMessage excMessage = 12;
+        playerAndCard onUpgradeCard = 10;
+        bool onCardUpgraded = 11;
+        playerAndSlot onCardDeckSlot = 12;
+        bool onSuccessAddSlot = 13;
+        exceptionErrorMessage excMessage = 14;
     }
 }
 
@@ -165,13 +178,18 @@ message allPlayerBattleResult {
     repeated playerBattleResult results = 1;
 }
 
+message countDownRoomUpdate {
+    int32 battleTime = 1;
+    roomData updatedRoom = 2;
+}
+
 message roomStream {
     oneof event {
         // for broadcast
         playerWithCards playerJoin = 1;
         playerWithCards playerLeft = 2;
         roomData onRoomUpdate = 3;
-        int32 countDown = 4;
+        countDownRoomUpdate countDown = 4;
         allPlayerBattleResult battleResult = 5;
         endResult result = 6;
 

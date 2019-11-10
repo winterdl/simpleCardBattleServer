@@ -85,6 +85,7 @@ var rootCmd = &cobra.Command{
 				MaxLevel:      viper.GetInt("shop.max"),
 				Time:          viper.GetInt("shop.time"),
 				MaxItem:       viper.GetInt("shop.max_item"),
+				URLFile:       viper.GetString("shop.url"),
 				Broadcast:     make(chan cardBattle.ShopStream),
 				ClientStreams: make(map[string]chan cardBattle.ShopStream),
 			}).NewHub(),
