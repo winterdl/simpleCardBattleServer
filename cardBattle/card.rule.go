@@ -59,6 +59,14 @@ func (p *PlayerWithCards) initPlayerCard(MaxCardOnDeck int32, maxCardLevel int, 
 
 }
 
+func checkIfAllPlayerHpIsIntack(ruleHp int64, p []*PlayerWithCards) bool {
+	total := int64(0)
+	for _, v := range p {
+		total += v.Hp
+	}
+	return total == (ruleHp * int64(len(p)))
+}
+
 func checkIfAllPlayerHpIsSame(p []*PlayerWithCards) bool {
 	same := true
 	current := int64(0)

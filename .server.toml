@@ -20,7 +20,7 @@ min = 5
 max = 50
 time = 30
 max_item = 5
-url = "http://192.168.9.101:8080/"
+url = "http://10.10.30.122:8080/"
 
 [room]
 expired_time = 30

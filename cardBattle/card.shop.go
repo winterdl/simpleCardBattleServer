@@ -136,10 +136,10 @@ func (c *CardShop) RandomCard(Level int) ([]*Card, error) {
 			Def:   int64(random(minAtkDef, maxAtkDef)),
 		}
 
-		card.Color = checkCardColor(card, card.Level)
 		card.Price = card.Price * int64(card.Level)
 		card.Atk = card.Atk * int64(card.Level)
 		card.Def = card.Def * int64(card.Level)
+		card.Color = checkCardColor(card, card.Level)
 
 		cards = append(cards, card)
 

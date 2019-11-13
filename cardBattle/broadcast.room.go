@@ -92,9 +92,6 @@ func (c *Room) receiveRoomBroadcasts(stream CardBattleService_CardBattleRoomStre
 	}
 }
 
-// this function only run
-// if player flag in room status
-// is 1
 func (c *CardBattleServer) startRoomBattleCountdown(id string) {
 	go func(s *CardBattleServer, idRoom string) {
 
@@ -184,34 +181,44 @@ func (c *CardBattleServer) startRoomBattleCountdown(id string) {
 					players := s.Room[idRoom].Data.Players
 					flagWinner := 0
 
-					// check the winner
-
 					for _, v := range players {
-						if v.Hp > 0 && !checkIfAllPlayerHpIsSame(c.Room[idRoom].Data.Players) {
-							winers = append(winers, v.Owner)
-						}
-
 						totalCardDeck += len(v.Deck)
 						totalCardDeploy += len(v.Deployed)
-
 						totalHp += v.Hp
-						flagWinner = 0
 					}
 
-					totalCard = totalCardDeck + totalCardDeploy
+					if !checkIfAllPlayerHpIsIntack(c.Room[idRoom].Data.EachPlayerHealth, c.Room[idRoom].Data.Players) {
 
-					if totalCard == 0 && !checkIfAllPlayerHpIsSame(c.Room[idRoom].Data.Players) {
-						p, _ := getPlayerWithMaxHp(players)
-						winers = []*Player{}
-						winers = append(winers, p.Owner)
-						flagWinner = 1
-					}
+						// check the winner
+						// from player with hp not 0
+						for _, v := range players {
+							if v.Hp > 0 && !checkIfAllPlayerHpIsSame(c.Room[idRoom].Data.Players) {
+								winers = append(winers, v.Owner)
+							}
 
-					if totalCardDeploy == 0 && totalCardDeck > 0 && !checkIfAllPlayerHpIsSame(c.Room[idRoom].Data.Players) {
-						p, _ := getPlayerWithMaxHp(players)
-						winers = []*Player{}
-						winers = append(winers, p.Owner)
-						flagWinner = 2
+							flagWinner = 0
+						}
+
+						totalCard = totalCardDeck + totalCardDeploy
+
+						// check the winner
+						// from player with more hp
+						if totalCard == 0 && !checkIfAllPlayerHpIsSame(c.Room[idRoom].Data.Players) {
+							p, _ := getPlayerWithMaxHp(players)
+							winers = []*Player{}
+							winers = append(winers, p.Owner)
+							flagWinner = 1
+						}
+
+						// check the winner
+						// from player with more hp
+						// and no card deploy
+						if totalCardDeploy == 0 && totalCardDeck > 0 && !checkIfAllPlayerHpIsSame(c.Room[idRoom].Data.Players) {
+							p, _ := getPlayerWithMaxHp(players)
+							winers = []*Player{}
+							winers = append(winers, p.Owner)
+							flagWinner = 2
+						}
 					}
 
 					// remove all player deployed deck
@@ -235,12 +242,15 @@ func (c *CardBattleServer) startRoomBattleCountdown(id string) {
 
 						// set winner prize
 						c.Players[winers[0].Id].Owner.Cash += c.Room[idRoom].Data.Reward.CashReward
-						c.Players[winers[0].Id].Owner.Exp += c.Room[idRoom].Data.Reward.ExpReward
 
-						if c.Players[winers[0].Id].Owner.Exp >= c.Players[winers[0].Id].Owner.MaxExp {
-							c.Players[winers[0].Id].Owner.Exp -= c.Players[winers[0].Id].Owner.MaxExp
-							c.Players[winers[0].Id].Owner.Level++
-							c.Players[winers[0].Id].Owner.MaxExp = c.Players[winers[0].Id].Owner.MaxExp * int64(c.Players[winers[0].Id].Owner.Level)
+						// all player in room receive xp
+						for _, v := range c.Room[idRoom].Data.Players {
+							c.Players[v.Owner.Id].Owner.Exp += c.Room[idRoom].Data.Reward.ExpReward
+							if c.Players[v.Owner.Id].Owner.Exp >= c.Players[v.Owner.Id].Owner.MaxExp {
+								c.Players[v.Owner.Id].Owner.Exp -= c.Players[v.Owner.Id].Owner.MaxExp
+								c.Players[v.Owner.Id].Owner.Level++
+								c.Players[v.Owner.Id].Owner.MaxExp = c.Config.AmountDefaultExp * int64(c.Players[v.Owner.Id].Owner.Level)
+							}
 						}
 
 						cardsReceive := []*Card{}
@@ -281,6 +291,7 @@ func (c *CardBattleServer) startRoomBattleCountdown(id string) {
 					// 0 = is all player hp is 0
 					// 1 = is all player card is 0 && hp is 0
 					// 2 is all player card is 0 and all player hp is same
+					// 3 no one fight on first round
 					if totalHp == 0 && totalCardDeck > 0 {
 
 						// broadcash draw
@@ -313,6 +324,18 @@ func (c *CardBattleServer) startRoomBattleCountdown(id string) {
 						c.Room[idRoom].Broadcast <- RoomStream{
 							Event: &RoomStream_OnDraw{
 								OnDraw: int32(2),
+							},
+						}
+
+						// stop the loop
+						return
+
+					} else if totalCardDeck > 0 && totalCardDeploy == 0 && checkIfAllPlayerHpIsIntack(c.Room[idRoom].Data.EachPlayerHealth, c.Room[idRoom].Data.Players) {
+
+						// broadcash draw
+						c.Room[idRoom].Broadcast <- RoomStream{
+							Event: &RoomStream_OnDraw{
+								OnDraw: int32(3),
 							},
 						}
 

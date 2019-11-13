@@ -36,8 +36,6 @@ func (c *CardBattleServer) CardBattleShopStream(stream CardBattleService_CardBat
 
 		case *ShopStream_PlayerJoin:
 
-			go c.Shop.receiveBroadcasts(stream, evt.PlayerJoin.Id)
-
 			err := stream.Send(&ShopStream{
 				Event: evt,
 			})
@@ -45,6 +43,10 @@ func (c *CardBattleServer) CardBattleShopStream(stream CardBattleService_CardBat
 			if err != nil {
 				return err
 			}
+
+			time.Sleep(1 * time.Second)
+
+			go c.Shop.receiveBroadcasts(stream, evt.PlayerJoin.Id)
 
 		case *ShopStream_ShopRefreshTime:
 
